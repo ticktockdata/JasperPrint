@@ -1,0 +1,335 @@
+/*
+ * Copyright (C) 2019 Joseph A Miller
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package com.ticktockdata.jasper.gui;
+
+import com.ticktockdata.jasper.JasperReportImpl;
+import com.ticktockdata.jasper.PrintExecutor;
+import com.ticktockdata.jasper.prompts.*;
+import java.awt.Frame;
+import java.util.List;
+
+/**
+ *
+ * @author JAM {javajoe@programmer.net}
+ */
+public class PromptDialog extends javax.swing.JDialog {
+    
+    private JasperReportImpl jasperReportImpl = null;
+    
+    /**
+     * Creates new form PromptDialog
+     * @param parent
+     * @param modal
+     */
+    public PromptDialog(java.awt.Frame parent, boolean modal) {
+        super(parent, modal);
+        initComponents();
+    }
+    
+    
+     /**
+     * @return the jasperReportImpl
+     */
+    public JasperReportImpl getJasperReportImpl() {
+        return jasperReportImpl;
+    }
+
+    /**
+     * @param jasperReportImpl the jasperReportImpl to set
+     */
+    public void setJasperReportImpl(JasperReportImpl jasperReportImpl) {
+        this.jasperReportImpl = jasperReportImpl;
+    }
+    
+    
+    /**
+     * This method called internally to fill the jasperReportImpl's parameters via
+ user selections made on dialog.
+     */
+    private void fillParameters() {
+        
+        System.out.println("Filling the parameters!");
+        for (java.awt.Component c : pnlParams.getComponents()) {
+            if (c instanceof DateRangePrompt) {
+                ((DateRangePrompt)c).fillParameters(jasperReportImpl);
+            } else if (c instanceof PromptComponent) {
+                jasperReportImpl.setParameter(((PromptComponent)c).getPromptName(), ((PromptComponent)c).getPromptValue());
+            }
+        }
+    }
+    
+    
+    /**
+     * Loads the prompt components onto the dialog
+     * @return 
+     */
+    private boolean loadParameters() {
+        
+        // remove the existing components
+        for (int i = pnlParams.getComponentCount() - 1; i >= 0; i--) {
+            pnlParams.remove(i);
+        }
+        
+        // get list of components
+        List<PromptComponent> prompts = PromptComponentFactory.getPromptsForReport(jasperReportImpl);
+        
+        for (PromptComponent pc : prompts) {
+            pnlParams.add(pc);
+            pc.refreshData();
+        }
+        
+        this.pack();
+        
+        // return true only if there are prompts to choose from
+        return prompts.size() > 0;
+    }
+    
+    public static void showPromptDialog(java.awt.Component parent, JasperReportImpl report) {
+        
+        try {
+        java.awt.Frame frame = null;
+//        System.out.println("show prompt dialog...");
+        // Access the JFrame via the parent component of the jasperReportImpl (JButton?)
+        if (parent != null) {
+            while (!(parent instanceof java.awt.Frame)) {
+                if (parent.getParent() == null) {
+                    break;
+                } else {
+                    parent = parent.getParent();
+                }
+                if (parent instanceof java.awt.Frame) {
+                    frame = (Frame) parent;
+                    break;
+                }
+            }
+        }
+        
+        PromptDialog dlg = new PromptDialog(frame, true);
+        dlg.setJasperReportImpl(report);
+        if (!dlg.loadParameters()) {
+            // if failed to fill parameters (maybe there were none) then exit
+            // we need to dispose this dialog, or else it will 'hang' the application on shutdown
+            System.out.println("there are no parameters!");
+            dlg.dispose();
+            return;
+        } else {
+            System.out.println("did load parameters");
+        }
+        
+//        System.out.println("setting location relative to " + parent);
+        dlg.setLocationRelativeTo(parent);
+        
+        // remove execute button if no settings available
+        if (report.getPrintButton() == null) {
+            dlg.cmdExecute.setVisible(false);
+        }
+        
+//        System.out.println("showing dialog!");
+        dlg.setVisible(true);
+        
+        } catch (Exception ex) {
+            System.out.println("Exception: " + ex.getLocalizedMessage());
+            ex.printStackTrace();
+        }
+        
+    }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        pnlButtons = new javax.swing.JPanel();
+        cmdCancel = new javax.swing.JButton();
+        cmdExecute = new javax.swing.JButton();
+        cmdPrint = new javax.swing.JButton();
+        cmdPreview = new javax.swing.JButton();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        pnlParams = new javax.swing.JPanel();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setTitle("Report Parameters");
+
+        cmdCancel.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/ticktockdata/jasper/resources/cancel16.png"))); // NOI18N
+        cmdCancel.setText("Cancel");
+        cmdCancel.setPreferredSize(new java.awt.Dimension(120, 26));
+        cmdCancel.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cmdCancelActionPerformed(evt);
+            }
+        });
+
+        cmdExecute.setText("Execute Report");
+        cmdExecute.setToolTipText("Runs the report with the default / user-set executor (allows Export_To_PDF, etc)");
+        cmdExecute.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cmdExecuteActionPerformed(evt);
+            }
+        });
+
+        cmdPrint.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/ticktockdata/jasper/resources/printer16.png"))); // NOI18N
+        cmdPrint.setText("Print");
+        cmdPrint.setToolTipText("Forces Print action");
+        cmdPrint.setPreferredSize(new java.awt.Dimension(120, 26));
+        cmdPrint.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cmdPrintActionPerformed(evt);
+            }
+        });
+
+        cmdPreview.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/ticktockdata/jasper/resources/preview16.png"))); // NOI18N
+        cmdPreview.setText("Preview");
+        cmdPreview.setToolTipText("Forces Preview action");
+        cmdPreview.setPreferredSize(new java.awt.Dimension(120, 26));
+        cmdPreview.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cmdPreviewActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout pnlButtonsLayout = new javax.swing.GroupLayout(pnlButtons);
+        pnlButtons.setLayout(pnlButtonsLayout);
+        pnlButtonsLayout.setHorizontalGroup(
+            pnlButtonsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, pnlButtonsLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(cmdCancel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 89, Short.MAX_VALUE)
+                .addComponent(cmdExecute)
+                .addGap(18, 18, 18)
+                .addComponent(cmdPreview, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addComponent(cmdPrint, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
+        );
+        pnlButtonsLayout.setVerticalGroup(
+            pnlButtonsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, pnlButtonsLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(pnlButtonsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(cmdPrint, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cmdCancel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cmdPreview, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cmdExecute))
+                .addContainerGap())
+        );
+
+        getContentPane().add(pnlButtons, java.awt.BorderLayout.PAGE_END);
+
+        jScrollPane1.setMinimumSize(new java.awt.Dimension(600, 325));
+        jScrollPane1.setPreferredSize(new java.awt.Dimension(600, 325));
+
+        pnlParams.setPreferredSize(new java.awt.Dimension(10, 320));
+        jScrollPane1.setViewportView(pnlParams);
+
+        getContentPane().add(jScrollPane1, java.awt.BorderLayout.CENTER);
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void cmdCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdCancelActionPerformed
+        
+        jasperReportImpl.setCanceled(true);
+        this.setVisible(false);
+        this.dispose();
+        
+    }//GEN-LAST:event_cmdCancelActionPerformed
+
+    private void cmdPrintActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdPrintActionPerformed
+        
+        jasperReportImpl.setPrintAction(PrintExecutor.Action.PRINT);
+        fillParameters();
+        this.setVisible(false);
+        this.dispose();
+        
+    }//GEN-LAST:event_cmdPrintActionPerformed
+
+    private void cmdPreviewActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdPreviewActionPerformed
+        
+        jasperReportImpl.setPrintAction(PrintExecutor.Action.PREVIEW);
+        fillParameters();
+        this.setVisible(false);
+        this.dispose();
+        
+    }//GEN-LAST:event_cmdPreviewActionPerformed
+
+    private void cmdExecuteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdExecuteActionPerformed
+        
+        fillParameters();
+        this.setVisible(false);
+        this.dispose();
+        
+    }//GEN-LAST:event_cmdExecuteActionPerformed
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        /* Set the Nimbus look and feel */
+        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         */
+        try {
+            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(PromptDialog.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (InstantiationException ex) {
+            java.util.logging.Logger.getLogger(PromptDialog.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            java.util.logging.Logger.getLogger(PromptDialog.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+            java.util.logging.Logger.getLogger(PromptDialog.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        //</editor-fold>
+
+        /* Create and display the dialog */
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                PromptDialog dialog = new PromptDialog(new javax.swing.JFrame(), true);
+                dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+                    @Override
+                    public void windowClosing(java.awt.event.WindowEvent e) {
+                        System.exit(0);
+                    }
+                });
+                dialog.setVisible(true);
+            }
+        });
+    }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton cmdCancel;
+    private javax.swing.JButton cmdExecute;
+    private javax.swing.JButton cmdPreview;
+    private javax.swing.JButton cmdPrint;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JPanel pnlButtons;
+    private javax.swing.JPanel pnlParams;
+    // End of variables declaration//GEN-END:variables
+
+
+}
