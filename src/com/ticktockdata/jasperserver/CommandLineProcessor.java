@@ -20,7 +20,9 @@ import com.ticktockdata.jasper.ConnectionInfo;
 import com.ticktockdata.jasper.ConnectionManager;
 import com.ticktockdata.jasper.JasperPrintMain;
 import static com.ticktockdata.jasper.JasperPrintMain.LOGGER;
+import static com.ticktockdata.jasper.JasperPrintMain.addToClassPath;
 import com.ticktockdata.jasperserver.PrintServer.Command;
+import java.io.File;
 import java.net.InetAddress;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
@@ -141,10 +143,35 @@ public class CommandLineProcessor {
         
         String status = ServerManager.startPrintServer(port, connInfo, silent);
         
+        // added 2021-07-07, JAM
+        String fontDir = getArgumentValue(args, "-font");
+        if (fontDir != null && !fontDir.isEmpty()) {
+            loadFontExtensions(fontDir);
+        }
+        
         showStatus(status, silent);
         
     }
     
+    
+    private void loadFontExtensions(String fontDir) {
+            // try to load font extension for JasperReports (added v2021.1, JAM)
+        try {
+            File d = new File(fontDir);
+            if (!d.exists()) {
+                LOGGER.debug("Fonts directory does not exist!");
+            } else {
+                for (File f : d.listFiles()) {
+                    if (!f.isDirectory() && f.getName().toLowerCase().endsWith(".jar")) {
+                        addToClassPath(f.getAbsolutePath());
+                        LOGGER.debug("Added font extension to classpath: " + f.getName());
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            LOGGER.error("Error finding fonts directory", ex);
+        }
+}
     
     /** 
      * this routine is used by both START and ADD routines

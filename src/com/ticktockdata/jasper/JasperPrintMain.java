@@ -21,6 +21,10 @@ package com.ticktockdata.jasper;
 import com.ticktockdata.jasperserver.CommandLineProcessor;
 import com.ticktockdata.jasperserver.PrintServer;
 import com.ticktockdata.jasperserver.ServerManager;
+import java.io.File;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Date;
 import org.apache.log4j.Logger;
 import java.util.HashMap;
@@ -97,6 +101,44 @@ public class JasperPrintMain {
         System.out.println("shut down the report manager");
         
         
+    }
+    
+    
+    /**
+     * Use this to add jars and classes to the system classpath. Public access
+     * so it can be used outside of this class. This code copied from another
+     * application written by JAM.
+     * <p>
+     * Does not throw exception if invalid, but records warning in log.
+     * @since v2021.1, JAM
+     * @param _path
+     */
+    public static void addToClassPath(String _path) {
+        try {
+            // get the java.class.path property
+            String cp = System.getProperty("java.class.path");
+            // if this jar is already on class-path then don't add again
+            java.nio.file.Path path = Paths.get(_path);
+            if (cp.contains(path.getFileName().toString())) {
+                LOGGER.debug("Resource already exists on Classpath: " + _path);
+                return;
+            }
+            if (!Files.exists(path)) {
+                LOGGER.error("Not a valid file to add to Classpath: " + _path);
+            }
+            // compatibile with Java > 8 does not use URLClassLoader like my earlier attempts.
+            ClassLoader cl = ClassLoader.getSystemClassLoader();
+            // NOTE:  for compatibility with BeanShell we need to use Array for varargs param type
+            Method method = cl.getClass().getDeclaredMethod("appendToClassPathForInstrumentation", new Class[]{String.class});
+            method.setAccessible(true);
+            method.invoke(cl, new Object[]{_path});
+            LOGGER.debug("ADDED resource to ClassPath: " + _path);
+            // update the java.class.path property
+            System.setProperty("java.class.path", System.getProperty("java.class.path") + File.pathSeparator + _path);
+            LOGGER.debug("Successfully added to classpath: " + _path);
+        } catch (Throwable ex) {
+            LOGGER.warn("Failed to add to classpath:", ex);
+        }
     }
     
     
@@ -194,8 +236,8 @@ public class JasperPrintMain {
 //        
 //        new JasperPrintMain();
 //        if (true) return;
-        
-        
+
+    
         /**
          * The following is the entry point for Command-Line usage of JasperPrint
          */
@@ -240,7 +282,8 @@ public class JasperPrintMain {
     private static String getHelpHeader() {
         return "\n>>> -----------------------------------\n"
             + "JasperPrint " + JasperPrintMain.VERSION + "\n"
-            + "Copyright 2018 - 2020, Joseph A Miller / Tick Tock Data\n\n";
+            + "Copyright 2018 - 2021, Joseph A Miller / Tick Tock Data\n"
+            + "email: support@ticktockdata.com\n\n";
     }
     
     
@@ -287,6 +330,7 @@ public class JasperPrintMain {
                 + "--host  [" + ServerManager.LOCALHOST + "] (which host to connect to, specify to print to remote server\n"
                 + "--port [" + ServerManager.DEFAULT_SERVER_PORT + "] (the port used by the Print Server)\n"
                 + "--identifier [" + ConnectionManager.DEFAULT_CONNECTION_NAME + "] (also -id, the 'Name' of the database connection)\n"
+                + "--fonts (path of directory containing JasperReport font extensions (must be .jar files))\n"
                 + "--silent OR -si (suppresses visible Message Boxes)\n"
                 + "--verbose OR -v (increases terminal output)\n"
                 + getHelpFooter();
@@ -323,6 +367,9 @@ public class JasperPrintMain {
                 + "you will need to add them via --classpath.\n"
                 + "\n"
                 + "The default ServerSocket port is " + ServerManager.DEFAULT_SERVER_PORT + ".\n"
+                + "\n"
+                + "Can add custom fonts via JasperReport Font Extensions (.jar files)\n"
+                + "by specifying the directory they're in with --fonts <path_to_dir>\n"
                 + "\n"
                 + "You can host multiple database connections on a\n"
                 + "single Server (port) by providing an --identifier for\n"
