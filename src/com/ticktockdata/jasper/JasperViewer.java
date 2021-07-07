@@ -33,15 +33,14 @@ import classicacctapp.JasperKeyBinder;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.Frame;
-import java.awt.Toolkit;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseWheelEvent;
 import java.io.InputStream;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -49,6 +48,9 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JRootPane;
 import javax.swing.KeyStroke;
 import javax.swing.RootPaneContainer;
 import javax.swing.SwingUtilities;
@@ -57,6 +59,7 @@ import net.sf.jasperreports.engine.JRConstants;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JasperPrint;
 import net.sf.jasperreports.engine.JasperReportsContext;
+import net.sf.jasperreports.engine.type.OrientationEnum;
 import net.sf.jasperreports.export.SimpleExporterInput;
 import net.sf.jasperreports.export.SimplePrintServiceExporterConfiguration;
 import net.sf.jasperreports.swing.JRViewerController;
@@ -75,10 +78,10 @@ import org.apache.commons.logging.LogFactory;
  * <p>
  * This class copied and modified by JAM {javajoe@programmer.net} on Aug 29,
  * 2018. Primary purpose is to get rid of the annoying fact that Viewer window
- * would display even if there were no pages.  Also removed the isExitOnClose
- * option - we NEVER want to terminate the application if the viewer window
- * is closed!  Further revised so viewReport returns the JasperViewer so we
- * have a 'handle' on it to close / cancel report by calling exitForm()
+ * would display even if there were no pages. Also removed the isExitOnClose
+ * option - we NEVER want to terminate the application if the viewer window is
+ * closed! Further revised so viewReport returns the JasperViewer so we have a
+ * 'handle' on it to close / cancel report by calling exitForm()
  *
  * @author Teodor Danciu (teodord@users.sourceforge.net)
  */
@@ -92,11 +95,10 @@ public class JasperViewer extends javax.swing.JFrame {
      *
      */
     protected net.sf.jasperreports.swing.JRViewer viewer;
-    
-    
+
     /**
-     * We must un-register the window listener and set disposeLister to null
-     * on closing, or it will keep the JasperViewer from Garbage Collection.
+     * We must un-register the window listener and set disposeLister to null on
+     * closing, or it will keep the JasperViewer from Garbage Collection.
      */
     private java.awt.event.WindowAdapter disposeListener = new java.awt.event.WindowAdapter() {
         @Override
@@ -211,15 +213,14 @@ public class JasperViewer extends javax.swing.JFrame {
         }
 
         initComponents();
-        
+
         this.viewer = new net.sf.jasperreports.swing.JRViewer(jasperReportsContext, sourceFile, isXMLFile, locale, resBundle);
         this.pnlMain.add(this.viewer, BorderLayout.CENTER);
-        
+
         addKeyBinders();
-        
+
     }
-    
-    
+
     /**
      *
      */
@@ -235,12 +236,12 @@ public class JasperViewer extends javax.swing.JFrame {
         }
 
         initComponents();
-        
+
         this.viewer = new net.sf.jasperreports.swing.JRViewer(jasperReportsContext, is, isXMLFile, locale, resBundle);
         this.pnlMain.add(this.viewer, BorderLayout.CENTER);
-        
+
         addKeyBinders();
-        
+
     }
 
     /**
@@ -257,22 +258,26 @@ public class JasperViewer extends javax.swing.JFrame {
         }
 
         initComponents();
-        
+
         this.viewer = new net.sf.jasperreports.swing.JRViewer(jasperReportsContext, jasperPrint, locale, resBundle);
-        
-        this.jasperPrint = jasperPrint;        
+
+        this.jasperPrint = jasperPrint;
         this.pnlMain.add(this.viewer, BorderLayout.CENTER);
-        
+
         addKeyBinders();
     }
-    
-    /** JasperPrint needs to be accessible from the printActionListener */
+
+    /**
+     * JasperPrint needs to be accessible from the printActionListener
+     */
     private JasperPrint jasperPrint = null;
-    
-    /** Need access to the button, so we can remove the listener */
+
+    /**
+     * Need access to the button, so we can remove the listener
+     */
     javax.swing.JButton btnPrint = null;
-    
-        /**
+
+    /**
      * This is a 'hack' to force the Print button's action to occur on the event
      * dispatch thread, otherwise it may be 0 size on some Look & Feel. Also
      * added other key bindings to
@@ -290,6 +295,7 @@ public class JasperViewer extends javax.swing.JFrame {
             }
 
             btnPrint.addActionListener(printActionListener);
+            ((JButton) getToolBarComponent("btnSave")).addActionListener(saveActionListener);
 
             // Add Escape listener - close with escape (JAM, 9/12/19)
             new JasperKeyBinder(viewer, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0)) {
@@ -298,7 +304,7 @@ public class JasperViewer extends javax.swing.JFrame {
                     exitForm();
                 }
             };
-            
+
             // Add Ctrl+W listener - close window (JAM, 9/12/19)
             new JasperKeyBinder(viewer, KeyStroke.getKeyStroke(KeyEvent.VK_W, KeyEvent.CTRL_DOWN_MASK)) {
                 @Override
@@ -306,8 +312,7 @@ public class JasperViewer extends javax.swing.JFrame {
                     exitForm();
                 }
             };
-            
-            
+
             // Add Print listener - trigger print action on Ctrl+P (JAM, 9/12/19)
             new JasperKeyBinder(viewer, KeyStroke.getKeyStroke(KeyEvent.VK_P, KeyEvent.CTRL_DOWN_MASK)) {
                 @Override
@@ -323,15 +328,69 @@ public class JasperViewer extends javax.swing.JFrame {
                     ((JButton) getToolBarComponent("btnSave")).doClick();
                 }
             };
-            
+
+            // This needs to be done after components initialized
+            // Added 2021-07-07, JAM
+            setSizeAndLocation();
+
         } catch (Exception ex) {
             log.error("Unable to hack!", ex);
         }
 
     }
-    
-    
-    /** This listener is attached to the print button and invokes the print dialog if triggered */
+
+    /**
+     * Added 2021-07-07, centers the Save dialog to frame
+     */
+    private ActionListener saveActionListener = new ActionListener() {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            
+            //hack to center the print dialog on classic systems
+            new Thread(() -> {
+                try {
+                    log.trace("Starting thread for saveActionListener ...");
+                    // wait for dialog to become visible
+                    int ct = 0;
+                    sleeper:
+                    while (true) {
+                        Thread.sleep(20);
+                        for (Window w : JDialog.getWindows()) {
+                            if (w != null && w instanceof JDialog && w.isVisible() && "Save".equals(((JDialog) w).getTitle())) {
+                                break sleeper;
+                            }
+                        }
+                        if (++ct > 50) {
+                            log.debug("count exceeded, breaking...");
+                            break;
+                        }
+                    }
+                    
+                } catch (Exception ex) {
+                    log.warn("Error while waiting for dialog!", ex);
+                }
+                SwingUtilities.invokeLater(() -> {
+                    try {
+                        for (Window w : JDialog.getWindows()) {
+                            if (w != null && w instanceof JDialog && w.isVisible() && "Save".equals(((JDialog) w).getTitle())) {
+                                w.setLocationRelativeTo(JasperViewer.this);
+                                break;
+                            }
+                        }
+                    } catch (Exception ex) {
+                        log.warn("Failed to center the Save dialog!", ex);
+                    }
+                });
+            }).start();
+
+        }
+    };
+
+    /**
+     * This listener is attached to the print button and invokes the print
+     * dialog if triggered
+     */
     private ActionListener printActionListener = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -376,34 +435,33 @@ public class JasperViewer extends javax.swing.JFrame {
             }
         }
     };
-    
-    
+
     /**
      * Enables this class to access some otherwise protected controls
+     *
      * @since 2019-09-12, JAM
      * @param componentName
-     * @return 
+     * @return
      */
     private JComponent getToolBarComponent(String componentName) {
         try {
-            
+
             // get access to toolbar
             java.lang.reflect.Field toolBarField = viewer.getClass().getDeclaredField("tlbToolBar");
             toolBarField.setAccessible(true);
             JRViewerToolbar toolBar = (JRViewerToolbar) toolBarField.get(viewer);
-            
+
             // get access to the component
             java.lang.reflect.Field field = toolBar.getClass().getDeclaredField(componentName);
             field.setAccessible(true);
-            return (javax.swing.JComponent)field.get(toolBar);
-            
+            return (javax.swing.JComponent) field.get(toolBar);
+
         } catch (Exception ex) {
             log.error("Failed to access toolbar component " + componentName, ex);
             return null;
         }
     }
-    
-    
+
     /**
      *
      */
@@ -435,9 +493,7 @@ public class JasperViewer extends javax.swing.JFrame {
     ) {
         this(jasperReportsContext, jasperPrint, null, null);
     }
-    
-    
-    
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -457,53 +513,149 @@ public class JasperViewer extends javax.swing.JFrame {
 
         pack();
 
-        Toolkit toolkit = java.awt.Toolkit.getDefaultToolkit();
-        java.awt.Dimension screenSize = toolkit.getScreenSize();
-        int screenResolution = toolkit.getScreenResolution();
-        float zoom = ((float) screenResolution) / net.sf.jasperreports.swing.JRViewerPanel.REPORT_RESOLUTION;
+    }
 
-        int height = (int) (550 * zoom);
-        if (height > screenSize.getHeight()) {
-            height = (int) screenSize.getHeight();
-        }
-        int width = (int) (750 * zoom);
-        if (width > screenSize.getWidth()) {
-            width = (int) screenSize.getWidth();
+    private void setSizeAndLocation() {
+
+        GraphicsDevice screen = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration().getDevice();
+        Dimension screenSize = screen.getDefaultConfiguration().getBounds().getSize();
+
+        int height = 0;
+        int width = 0;
+
+        // default viewer size is wd = 1000, ht = 733
+        if (OrientationEnum.LANDSCAPE.equals(jasperPrint.getOrientationValue())) {
+            // landscape format - viewer ht of 733 is a bit short for this, and should also be wider
+            log.trace("Landscape format, setting width and height, was " + width + "x" + height);
+            width = (int) ((float) Math.min(1200, screenSize.width - 60));
+            height = (int) ((float) Math.min(950, screenSize.height - 80));
+        } else {
+            // portrait format - viewer wd of 1000 is good for this, but should be taller 
+            log.trace("Portrait format, setting Height, was " + height);
+            width = (int) ((float) Math.min(920, screenSize.width - 60));
+            height = (int) ((float) Math.min(1200, screenSize.height - 80));
         }
 
         java.awt.Dimension dimension = new java.awt.Dimension(width, height);
         setSize(dimension);
-        setLocation((screenSize.width - width) / 2, (screenSize.height - height) / 2);
+        // alter location upward to compensate for documents bar at bottom of screen
+        setLocation((screenSize.width - width) / 2, ((screenSize.height - height) / 2) - 20);
+
+        setFocusToComponent((JComponent) viewer.getRootPane().getContentPane(), (JComponent) rootPane.getContentPane(), 50);
+
+    }
+
+    private long focusCount = 1;
+
+    /**
+     * Method to attempt focusing a component on opening a screen
+     * <p>
+     * This method revised to allow a delay before trying to focus.
+     *
+     * @param comp
+     * @param secondary  alternate component - may be null
+     * @param waitMillis number of Milliseconds to wait before trying to set
+     *                   focus. v2019.1 - 2019-04-08, JAM
+     * @since v2018.1 - 2018-03-06, JAM
+     * @see setFocusToComponent(JComponent, JComponent)
+     */
+    public void setFocusToComponent(final JComponent comp, final JComponent secondary, final int waitMillis) {
+
+        // prevent this number from getting too high
+        if (focusCount >= Integer.MAX_VALUE) {
+            focusCount = 1;
+        }
+
+        Thread focusThread = new Thread() {
+            @Override
+            public void run() {
+
+                // added wait option, 
+                if (waitMillis > 0) {
+                    try {
+                        Thread.sleep(waitMillis);
+                    } catch (Exception ex) {
+                    }
+                }
+
+                try {
+                    // find panel
+                    Container temp = comp;
+                    while (!(temp instanceof JPanel || temp instanceof JRootPane) && temp.getParent() != null) {
+                        temp = temp.getParent();
+                    }
+                    final JComponent panel = (JComponent) temp;
+
+                    long loopCount = 0;
+                    while (!panel.isVisible() && (++loopCount) < 100) {
+                        Thread.sleep(50);
+                    }
+
+                    // exit if it never became visible
+                    if (!panel.isVisible()) {
+                        return;
+                    }
+                    // after visible wait another 1/10 second to focus
+                    Thread.sleep(100);
+
+                    SwingUtilities.invokeLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (!comp.equals(panel)) {
+                                if (!panel.requestFocusInWindow()) {
+                                    panel.requestFocus();
+                                }
+                            }
+
+                            if (!comp.requestFocusInWindow()) {
+                                if (secondary != null) {
+                                    if (!secondary.requestFocusInWindow()) {
+                                        secondary.requestFocus();
+                                    }
+                                } else {
+                                    comp.requestFocus();
+                                }
+                            }
+                        }
+                    });
+                } catch (Exception ex) {
+                    log.warn("Error in focusing component", ex);
+                    ex.printStackTrace();
+                }
+            }
+        };
+
+        focusThread.setName("FocusThread-" + String.valueOf(focusCount++));
+        focusThread.start();
     }
 
     /**
-     * Exit the Application.
-     * Need to remove listeners and null properties so JasperViewer can be
-     * garbage collected.  Doesn't quite work, for some reason the last copy
-     * hangs and doesn't dispose.
+     * Exit the Application. Need to remove listeners and null properties so
+     * JasperViewer can be garbage collected. Doesn't quite work, for some
+     * reason the last copy hangs and doesn't dispose.
      */
     void exitForm() {
-        
+
         this.setVisible(false);
         this.removeWindowListener(disposeListener);
         disposeListener = null;
-        
+
         if (btnPrint != null) {
             btnPrint.removeActionListener(printActionListener);
             printActionListener = null;
             btnPrint = null;
         }
-        
+
         this.jasperPrint = null;
-        
+
         this.getContentPane().removeAll();
         this.viewer.clear();
         this.viewer = null;
         this.log = null;
         this.pnlMain = null;
-        
+
         this.dispose();
-        
+
         System.gc();    // run the Garbage Collector
     }
 
@@ -544,7 +696,7 @@ public class JasperViewer extends javax.swing.JFrame {
                 fileName = args[i];
             }
         }
-        
+
         if (fileName == null) {
             usage();
             return;
@@ -713,7 +865,7 @@ public class JasperViewer extends javax.swing.JFrame {
             System.out.println("CALLED FOCUS TO DIALOG");
             ReportManager.focusToDialog("Message", "OK");
         }
-        
+
         JasperViewer jasperViewer
                 = new JasperViewer(
                         jasperReportsContext,
@@ -735,7 +887,7 @@ public class JasperViewer extends javax.swing.JFrame {
             JasperReportsContext jasperReportsContext,
             String sourceFile,
             boolean isXMLFile
-            ) throws JRException {
+    ) throws JRException {
         viewReport(
                 jasperReportsContext,
                 sourceFile,
@@ -804,7 +956,7 @@ public class JasperViewer extends javax.swing.JFrame {
      * pages available.
      */
     private boolean setVisibleIfHasPages() {
-        
+
         JRViewerController controller = getController();
         try {
             if (controller != null && controller.getPageCount() > 0) {
@@ -824,9 +976,8 @@ public class JasperViewer extends javax.swing.JFrame {
         }
 
     }
-    
-    
-        /**
+
+    /**
      * Sets the focus to a specified component WHEN component is visible.<br>
      * Uses separate thread to 'wait' on visibility, then selects via EDT.
      *
@@ -834,9 +985,9 @@ public class JasperViewer extends javax.swing.JFrame {
      * @param c
      */
     public void setFocus() {
-        
+
         final Component c = this;
-        
+
         Thread t = new Thread() {
             @Override
             public void run() {
@@ -886,10 +1037,9 @@ public class JasperViewer extends javax.swing.JFrame {
         };
         t.start();
     }
-    
-    
+
     // Variables declaration - do not modify                     
     private javax.swing.JPanel pnlMain;
     // End of variables declaration        
-    
+
 }
