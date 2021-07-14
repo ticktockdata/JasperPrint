@@ -16,6 +16,7 @@
  */
 package com.ticktockdata.jasperserver;
 
+import com.ticktockdata.db.PgUtils;
 import com.ticktockdata.jasper.ConnectionInfo;
 import com.ticktockdata.jasper.ConnectionManager;
 import com.ticktockdata.jasper.JasperPrintMain;
@@ -92,6 +93,12 @@ public class CommandLineProcessor {
             case PRINT:
                 System.out.println("got a print job, sending to processPrint");
                 processPrint(args);
+                break;
+            case BACKUP:
+                processBackup(args);
+                break;
+            case RESTORE:
+                processRestore(args);
                 break;
             case CLEAR:
                 processClear(args);
@@ -371,6 +378,52 @@ public class CommandLineProcessor {
         }
     }
     
+    
+    
+    /**
+     * This is called directly, does not go through PrintServer
+     * @param args 
+     */
+    private void processBackup(String[] args) {
+                
+        // information needed = Database, Host and OutputFile
+        String dbName = getArgumentValue(args, "--database", "-db");
+        String host = getArgumentValue(args, "-h");
+        String file = getArgumentValue(args, "-f");
+        
+        if (dbName == null || file == null) {
+            showWarn(" - Must supply -db (database) and -f (output_file) parameters", false);
+            //this.println(MessageType.ERROR + serverName + " - Must supply -db (database) and -f (output_file) parameters");
+            return;
+        }
+        
+        PgUtils.backupPgDatabase(host, dbName, file);
+        
+    }
+    
+    
+    /**
+     * This is called directly, does not go through PrintServer
+     * @param args 
+     */
+    private void processRestore(String[] args) {
+                
+        // information needed = Database, Host and OutputFile
+        String dbName = getArgumentValue(args, "--database", "-db");
+        String host = getArgumentValue(args, "-h");
+        String file = getArgumentValue(args, "-f");
+        String driver = getArgumentValue(args, "-c");
+        
+        if (dbName == null || file == null) {
+            showWarn(" - Must supply -db (database), -c (driver_jar) and -f (input_file) parameters", false);
+            //this.println(MessageType.ERROR + serverName + " - Must supply -db (database) and -f (output_file) parameters");
+            return;
+        }
+        
+        ConnectionManager.addToClasspath(new File(driver));
+        PgUtils.restorePgDatabase(host, dbName, file);
+        
+    }
     
     
     /**
@@ -673,7 +726,7 @@ public class CommandLineProcessor {
     }
 
     
-    private static void showError(final String msg, Throwable err, boolean silent) {
+    public static void showError(final String msg, Throwable err, boolean silent) {
         
         if (err != null) {
             LOGGER.error(msg, err);
@@ -693,21 +746,21 @@ public class CommandLineProcessor {
     }
     
     
-    private static void showInfo(final String msg, boolean silent) {
+    public static void showInfo(final String msg, boolean silent) {
         LOGGER.info(msg);
         // we do NOT want to show message dialogs for INFO! (is very annoying)
-//        if (!silent) {
-//            SwingUtilities.invokeLater(new Runnable() {
-//                @Override
-//                public void run() {
-//                    JOptionPane.showMessageDialog(null, msg, "Jasper Print Server", JOptionPane.INFORMATION_MESSAGE);
-//                }
-//            });
-//        }
+        if (!silent) {
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    JOptionPane.showMessageDialog(null, msg, "Jasper Print Server", JOptionPane.INFORMATION_MESSAGE);
+                }
+            });
+        }
     }
     
     
-    private static void showWarn(final String msg, boolean silent) {
+    public static void showWarn(final String msg, boolean silent) {
         LOGGER.warn(msg);
         if (!silent) {
             SwingUtilities.invokeLater(new Runnable() {

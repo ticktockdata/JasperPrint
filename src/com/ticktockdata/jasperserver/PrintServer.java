@@ -70,6 +70,8 @@ public class PrintServer extends Thread {
         CLEAR,
         STATUS,
         CONNECTIONS,
+        BACKUP,
+        RESTORE,
         HELP,
         PROMPTS // used for help page
     }

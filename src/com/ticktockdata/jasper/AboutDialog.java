@@ -75,7 +75,7 @@ public class AboutDialog extends javax.swing.JDialog {
 
         jLabel4.setFont(jLabel4.getFont().deriveFont(jLabel4.getFont().getStyle() & ~java.awt.Font.BOLD));
         jLabel4.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel4.setText("<html>Copyright Jan 2018 - 2020<br>Joseph A Miller / Tick Tock Data<br>javajoe@programmer.net");
+        jLabel4.setText("<html>Copyright Jan 2018 - 2021<br>Joseph A Miller / Tick Tock Data<br>Email: ticktockdata@techie.com");
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);

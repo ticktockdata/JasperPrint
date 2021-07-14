@@ -117,7 +117,7 @@
               </FontInfo>
             </Property>
             <Property name="horizontalAlignment" type="int" value="0"/>
-            <Property name="text" type="java.lang.String" value="&lt;html&gt;Copyright Jan 2018 - 2020&lt;br&gt;Joseph A Miller / Tick Tock Data&lt;br&gt;javajoe@programmer.net"/>
+            <Property name="text" type="java.lang.String" value="&lt;html&gt;Copyright Jan 2018 - 2021&lt;br&gt;Joseph A Miller / Tick Tock Data&lt;br&gt;Email: ticktockdata@techie.com"/>
           </Properties>
         </Component>
       </SubComponents>
