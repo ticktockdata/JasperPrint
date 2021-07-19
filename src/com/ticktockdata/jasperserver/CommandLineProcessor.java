@@ -166,12 +166,12 @@ public class CommandLineProcessor {
         try {
             File d = new File(fontDir);
             if (!d.exists()) {
-                LOGGER.debug("Fonts directory does not exist!");
+                LOGGER.info("Fonts directory does not exist!");
             } else {
                 for (File f : d.listFiles()) {
                     if (!f.isDirectory() && f.getName().toLowerCase().endsWith(".jar")) {
                         addToClassPath(f.getAbsolutePath());
-                        LOGGER.debug("Added font extension to classpath: " + f.getName());
+                        LOGGER.info("Added font extension to classpath: " + f.getName());
                     }
                 }
             }
