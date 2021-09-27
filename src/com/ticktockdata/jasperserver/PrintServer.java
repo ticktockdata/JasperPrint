@@ -330,6 +330,7 @@ public class PrintServer extends Thread {
                     // TODO: check for processing jobs!
                     
                 } catch (Exception ex) {
+                    LOGGER.error("Error while waiting??? ", ex);
                 }
             }
             // shutdown the printing service - this also closes database connections.

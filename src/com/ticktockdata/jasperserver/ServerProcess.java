@@ -128,7 +128,7 @@ public class ServerProcess extends Thread {
 
                     break;
                 case STOP:
-
+                    
                     // this stops the whole server.
                     // to remove a registered connection use CLOSE instead
                     processStop(serverName);
@@ -530,10 +530,9 @@ System.out.println("Processing Help");
     private void processStop(String serverName) {
 
         try {
-
+            
             if (!socket.getInetAddress().isLoopbackAddress()) {
                 this.println(MessageType.ERROR + serverName + " - It is not permitted to stop a Print Server running on annother host!");
-                this.close();
                 return;
             }
 
@@ -541,12 +540,13 @@ System.out.println("Processing Help");
             String[] args = readCommands(); // argList.toArray(new String[argList.size()]);
             boolean force = false;
             for (String a : args) {
-                if (a.toLowerCase().contains("-f")) {
+                // if called from BeanShell script a can be a null element :(
+                if (a != null && a.toLowerCase().contains("-f")) {
                     force = true;
                     break;
                 }
             }
-
+            
             // shutdown the database server
             server.shutdown(force);
             if (server != null && server.isAlive()) {
@@ -555,6 +555,8 @@ System.out.println("Processing Help");
                 println(MessageType.INFO + serverName + " - PrintServer Shutdown Successful.");
             }
         } catch (Exception ex) {
+            this.println(MessageType.ERROR + serverName + " - Error occurred during shutdown attempt.\n" + ex);
+            LOGGER.error("Error in processStop: " + ex.getLocalizedMessage(), ex);
         } finally {
             this.close();   // shutdown this socket connection
         }

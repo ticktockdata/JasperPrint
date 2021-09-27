@@ -193,32 +193,6 @@ public class ServerManager {
         }
         
         
-        
-        
-        
-        // check if this connection is already open
-//        if (isPrintServerRunning(LOCALHOST, port, connInfo.getIdentifier())) {
-//            if (JOptionPane.showConfirmDialog(null, 
-//                    "There is already a connection named " + connInfo.getIdentifier() 
-//                            + " established on port " + port 
-//                            + ".\nDo you want to shutdown existing Connection and open a new one?"
-//                    , "Warning:", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) 
-//                    == JOptionPane.NO_OPTION) {
-//                
-//                return;
-//            }
-//        }
-//        
-//        System.out.println("Starting server....");
-//        
-//        try {
-//            PrintServer server = new PrintServer(port, connInfo);
-//            server.start();
-//        } catch (Exception ex) {
-//            LOGGER.error("Failed to start a server...", ex);
-//        }
-        
-        
     }
     
     private static boolean confirmValue = false;
@@ -263,22 +237,25 @@ public class ServerManager {
      * @param port 
      */
     public static void stopPrintServer(int port) {
-        
-        Client c = connectClient(LOCALHOST, port);
-        if (c == null) return;
-        
-        // tell server to stop
-        c.println("STOP");
-        
+
+        Client c;
         try {
+            c = connectClient(LOCALHOST, port);
+            if (c == null) {
+                return;
+            }
+            // tell server to stop
+            c.println("STOP");
             c.close();
+            c = null;
         } catch (Exception ex) {
             LOGGER.error("Error closing the socket connection!", ex);
+        } finally {
+            c = null;
         }
-        
-        c = null;
+
     }
-    
+
     
     /**
      * This Closes the given Connection on a port, and STOPS the PrintServer ONLY
