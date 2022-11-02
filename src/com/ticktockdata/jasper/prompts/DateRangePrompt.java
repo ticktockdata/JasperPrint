@@ -1,10 +1,7 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.ticktockdata.jasper.prompts;
 
+import classicacctapp.AutoComplete;
+import com.ticktockdata.jasper.DateRange;
 import com.ticktockdata.jasper.JasperReportImpl;
 import java.util.*;
 import net.sf.jasperreports.engine.JRExpression;
@@ -14,75 +11,44 @@ import net.sf.jasperreports.engine.JRPropertiesMap;
 import net.sf.jasperreports.engine.type.ParameterEvaluationTimeEnum;
 
 /**
+ * This class was heavily refactored 2022-10-06:07. <br>Removed the previous
+ * DateRange class and placed the DateRange enum (formerly RangeName) into a
+ * separate file, and split the date functions into their own class,
+ * {@link com.ticktockdata.jasper.DateService}.  JAM
  *
- * @author default
+ * @author JAM
+ * @see DateRange
+ * @see com.ticktockdata.jasper.DateService#setDateRangeAllImpl(com.ticktockdata.jasper.DateRangeALL) 
  */
 public class DateRangePrompt extends PromptComponent<List<Date>> implements JRParameter {
 
     private String startDateParameterName;
     private String endDateParameterName;
-    private Date startDate;
-    private Date endDate;
-    private RangeName rangeName;
-    private RangeName oldRange; // the Range to use for 'old value' of Property Change event
 
     private boolean triggerCustom = true;
-    private boolean supressTrigger = false;
-
-    public enum RangeName {
-        ALL("All"),
-        TODAY("Today"),
-        THIS_WEEK("This Week"),
-        THIS_WEEK_TO_DATE("This Week To Date"),
-        THIS_MONTH("This Month"),
-        THIS_MONTH_TO_DATE("This Month To Date"),
-        THIS_QUARTER("This Quarter"),
-        THIS_QUARTER_TO_DATE("This Quarter To Date"),
-        THIS_YEAR("This Year"),
-        THIS_YEAR_TO_DATE("This Year To Date"),
-        YESTERDAY("Yesterday"),
-        LAST_WEEK("Last Week"),
-        LAST_WEEK_TO_DATE("Last Week To Date"),
-        LAST_MONTH("Last Month"),
-        LAST_MONTH_TO_DATE("Last Month To Date"),
-        LAST_QUARTER("Last Quarter"),
-        LAST_QUARTER_TO_DATE("Last Quarter To Date"),
-        LAST_YEAR("Last Year"),
-        LAST_YEAR_TO_DATE("Last Year To Date"),
-        CUSTOM("** Custom **");
-
-        private String prettyName;
-
-        RangeName(String prettyName) {
-            this.prettyName = prettyName;
-        }
-
-        @Override
-        public String toString() {
-            return prettyName;
-        }
-
-    }
+    private boolean suppressTrigger = false;
 
     /**
      * Creates new form DateRangePrompt
      */
     public DateRangePrompt() {
         initComponents();
-        for (RangeName rn : rangeName.values()) {
+        
+        for (DateRange rn : DateRange.values()) {
             cboRange.addItem(rn);
         }
+        logger.debug("Created a new DateRangePrompt");
+        AutoComplete.enable(cboRange);
         
-        if (getDescription().isEmpty()) {
+        if (getDescription() == null || getDescription().trim().isEmpty()) {
             // this parameter has a pre-defined description
             super.setDescription("Select Date Range");
         } else {
             this.setDescription(getDescription());
         }
         
-        cboRange.setSelectedItem(RangeName.THIS_MONTH);
-        oldRange = (RangeName) cboRange.getSelectedItem();
-
+        cboRange.setSelectedItem(DateRange.THIS_MONTH);
+        
     }
 
     /**
@@ -95,7 +61,7 @@ public class DateRangePrompt extends PromptComponent<List<Date>> implements JRPa
     private void initComponents() {
 
         lblDescription = new javax.swing.JLabel();
-        cboRange = new javax.swing.JComboBox<RangeName>();
+        cboRange = new javax.swing.JComboBox();
         dateStart = new classicacctapp.ClassicAccDatePicker();
         lblTo = new javax.swing.JLabel();
         dateEnd = new classicacctapp.ClassicAccDatePicker();
@@ -164,61 +130,25 @@ public class DateRangePrompt extends PromptComponent<List<Date>> implements JRPa
 
     private void cboRangeItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_cboRangeItemStateChanged
         
-        // create an 'old value' DateRange (added PropertyChange event 9/5/19)
-        DateRange oldVal = new DateRange(oldRange, startDate, endDate);
-
         // this upates the dates
-        setRangeName((RangeName) cboRange.getSelectedItem());
-
-        // now create a new value and fire property change
-        DateRange newVal = new DateRange((RangeName) cboRange.getSelectedItem(), getStartDate(), getEndDate());
-        firePropertyChange("DATE_RANGE", oldVal, newVal);
-        // reset the Range to new value for next update
-        oldRange = (RangeName) cboRange.getSelectedItem();
-
+        if (!suppressTrigger && cboRange.getSelectedItem() instanceof DateRange) {
+            setDateRange((DateRange) cboRange.getSelectedItem());
+        }
+        
     }//GEN-LAST:event_cboRangeItemStateChanged
 
     private void dateStartPropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_dateStartPropertyChange
 
-        if (supressTrigger) {
-            return;
-        }
-        if (evt.getPropertyName().equalsIgnoreCase("date")) {
-
-            // create an 'old value' DateRange (added PropertyChange event 9/5/19)
-            DateRange oldVal = new DateRange(oldRange, startDate, endDate);
-
-            // update the date / date range
+        if (!suppressTrigger && evt.getPropertyName().equalsIgnoreCase("date")) {
             setStartDate(dateStart.getDate());
-
-            // now create a new value and fire property change
-            DateRange newVal = new DateRange((RangeName) cboRange.getSelectedItem(), getStartDate(), getEndDate());
-            firePropertyChange("DATE_RANGE", oldVal, newVal);
-            // reset the Range to new value for next update
-            oldRange = (RangeName) cboRange.getSelectedItem();
         }
 
     }//GEN-LAST:event_dateStartPropertyChange
 
     private void dateEndPropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_dateEndPropertyChange
         
-        if (supressTrigger) {
-            return;
-        }
-        if (evt.getPropertyName().equalsIgnoreCase("date")) {
-
-            // create an 'old value' DateRange (added PropertyChange event 9/5/19)
-            DateRange oldVal = new DateRange(oldRange, startDate, endDate);
-
-            // update the date / date range
+        if (!suppressTrigger && evt.getPropertyName().equalsIgnoreCase("date")) {
             setEndDate(dateEnd.getDate());
-
-            // now create a new value and fire property change
-            DateRange newVal = new DateRange((RangeName) cboRange.getSelectedItem(), getStartDate(), getEndDate());
-            firePropertyChange("DATE_RANGE", oldVal, newVal);
-            // reset the Range to new value for next update
-            oldRange = (RangeName) cboRange.getSelectedItem();
-
         }
 
     }//GEN-LAST:event_dateEndPropertyChange
@@ -226,7 +156,7 @@ public class DateRangePrompt extends PromptComponent<List<Date>> implements JRPa
     @Override
     public void setPromptValue(List<Date> value) {
         if (value == null) {
-            this.promptValue = new ArrayList<Date>();
+            this.promptValue = new ArrayList<>();
         } else if (value.size() == 2) {
             this.promptValue = value;
             setStartDate(promptValue.get(0));
@@ -244,12 +174,12 @@ public class DateRangePrompt extends PromptComponent<List<Date>> implements JRPa
     @Override
     public List<Date> getPromptValue() {
         if (promptValue == null) {
-            promptValue = new ArrayList<Date>();
+            promptValue = new ArrayList<>();
         } else {
             promptValue.clear();
         }
-        promptValue.add(startDate);
-        promptValue.add(endDate);
+        promptValue.add(dateStart.getDate());
+        promptValue.add(dateEnd.getDate());
         return promptValue;
     }
 
@@ -263,17 +193,19 @@ public class DateRangePrompt extends PromptComponent<List<Date>> implements JRPa
      * @return the startDate
      */
     public Date getStartDate() {
-        return startDate;
+        return dateStart.getDate();
     }
 
     /**
      * @param startDate the startDate to set
      */
     public void setStartDate(Date startDate) {
-        this.startDate = startDate;
-        this.dateStart.setDate(startDate);
-        if (triggerCustom) {
-            setRangeName(RangeName.CUSTOM);
+        Date newStartDate = startDate = startDate == null ? DateRange.TODAY.getStartDate() : startDate;
+        if (!Objects.equals(dateStart.getDate(), newStartDate)) {
+            this.dateStart.setDate(newStartDate);
+            if (triggerCustom) {
+                cboRange.setSelectedItem("** CUSTOM **");
+            }
         }
     }
 
@@ -281,126 +213,40 @@ public class DateRangePrompt extends PromptComponent<List<Date>> implements JRPa
      * @return the endDate
      */
     public Date getEndDate() {
-        return endDate;
+        return dateEnd.getDate();
     }
 
     /**
      * @param endDate the endDate to set
      */
     public void setEndDate(Date endDate) {
-        this.endDate = endDate;
-        this.dateEnd.setDate(endDate);
-        if (triggerCustom) {
-            setRangeName(RangeName.CUSTOM);
+        Date newEndDate = endDate == null ? DateRange.TODAY.getEndDate() : endDate;
+        if (!Objects.equals(dateEnd.getDate(), newEndDate)) {
+            this.dateEnd.setDate(newEndDate);
+            if (triggerCustom) {
+                cboRange.setSelectedItem("** CUSTOM **");
+            }
         }
     }
 
-    public void setRangeName(RangeName rName) {
+    public void setDateRange(DateRange dateRange) {
 
-        if (supressTrigger) {
+        if (suppressTrigger || dateRange == null) {
             return;
         }
 
         triggerCustom = false;  // disable set(Start/End)Date calling custom
-        supressTrigger = true;  // prevent looping when cboRange.setSelectedItem is called!
-
-        cboRange.setSelectedItem(rName);
-
-        switch (rName) {
-            case TODAY:
-                setStartDate(getToday());
-                setEndDate(getToday());
-                break;
-            case YESTERDAY:
-                setStartDate(getYesterday());
-                setEndDate(getYesterday());
-                break;
-            case THIS_WEEK:
-                setStartDate(getFirstDayOfThisWeek());
-                setEndDate(getLastDayOfThisWeek());
-                break;
-            case THIS_WEEK_TO_DATE:
-                setStartDate(getFirstDayOfThisWeek());
-                setEndDate(getToday());
-                break;
-            case LAST_WEEK:
-                setStartDate(getFirstDayOfLastWeek());
-                setEndDate(getLastDayOfLastWeek());
-                break;
-            case LAST_WEEK_TO_DATE:
-                setStartDate(getFirstDayOfLastWeek());
-                setEndDate(getToday());
-                break;
-            case THIS_MONTH:
-                setStartDate(getFirstDayOfThisMonth());
-                setEndDate(getLastDayOfThisMonth());
-                break;
-            case THIS_MONTH_TO_DATE:
-                setStartDate(getFirstDayOfThisMonth());
-                setEndDate(getToday());
-                break;
-            case LAST_MONTH:
-                setStartDate(getFirstDayOfLastMonth());
-                setEndDate(getLastDayOfLastMonth());
-                break;
-            case LAST_MONTH_TO_DATE:
-                setStartDate(getFirstDayOfLastMonth());
-                setEndDate(getToday());
-                break;
-            case THIS_QUARTER:
-                setStartDate(getFirstDayOfThisQuarter());
-                setEndDate(getLastDayOfThisQuarter());
-                break;
-            case THIS_QUARTER_TO_DATE:
-                setStartDate(getFirstDayOfThisQuarter());
-                setEndDate(getToday());
-                break;
-            case LAST_QUARTER:
-                setStartDate(getFirstDayOfLastQuarter());
-                setEndDate(getLastDayOfLastQuarter());
-                break;
-            case LAST_QUARTER_TO_DATE:
-                setStartDate(getFirstDayOfLastQuarter());
-                setEndDate(getToday());
-                break;
-            case THIS_YEAR:
-                setStartDate(getFirstDayOfThisYear());
-                setEndDate(getLastDayOfThisYear());
-                break;
-            case THIS_YEAR_TO_DATE:
-                setStartDate(getFirstDayOfThisYear());
-                setEndDate(getToday());
-                break;
-            case LAST_YEAR:
-                setStartDate(getFirstDayOfLastYear());
-                setEndDate(getLastDayOfLastYear());
-                break;
-            case LAST_YEAR_TO_DATE:
-                setStartDate(getFirstDayOfLastYear());
-                setEndDate(getToday());
-                break;
-            case CUSTOM:
-                // don't set any dates if Custom set
-                break;
-            case ALL:
-                
-                Calendar cal = new GregorianCalendar(1970, 1, 1);
-                setStartDate(cal.getTime());
-                
-                cal = new GregorianCalendar();  //ERROR, WIDTH, ABORT);
-                cal.add(Calendar.YEAR, 10);
-                cal.set(Calendar.HOUR, 0);
-                cal.set(Calendar.MINUTE, 0);
-                cal.set(Calendar.SECOND, 0);
-                cal.set(Calendar.MILLISECOND, 0);
-                setEndDate(cal.getTime());
-                break;
-            default:
-                System.out.println("should not get here!");
+        suppressTrigger = true;  // prevent looping when cboRange.setSelectedItem is called!
+        
+        setStartDate(dateRange.getStartDate());
+        setEndDate(dateRange.getEndDate());
+        
+        if (!dateRange.equals(cboRange.getSelectedItem())) {
+            cboRange.setSelectedItem(dateRange);
         }
 
         triggerCustom = true;
-        supressTrigger = false;
+        suppressTrigger = false;
 
     }
 
@@ -431,194 +277,10 @@ public class DateRangePrompt extends PromptComponent<List<Date>> implements JRPa
     public void setEndDateParameterName(String endDateParameterName) {
         this.endDateParameterName = endDateParameterName;
     }
-
-    // methods to retrive various dates
-    public Date getToday() {
-        return stripTime(GregorianCalendar.getInstance());
-    }
-
-    public Date getYesterday() {
-        Calendar cal = GregorianCalendar.getInstance();
-        cal.add(Calendar.DAY_OF_MONTH, -1);
-        return stripTime(cal);
-    }
-
-    public Date getFirstDayOfThisWeek() {
-        return stripTime(calFirstDayThisWeek());
-    }
-
-    public Date getLastDayOfThisWeek() {
-        Calendar cal = calFirstDayThisWeek();
-        cal.add(Calendar.DAY_OF_MONTH, 6);
-        return stripTime(cal);
-    }
-
-    public Date getFirstDayOfThisMonth() {
-        Calendar cal = calLastDayThisMonth();
-        cal.set(Calendar.DAY_OF_MONTH, 1);
-        return stripTime(cal);
-    }
-
-    public Date getLastDayOfThisMonth() {
-        return stripTime(calLastDayThisMonth());
-    }
-
-    public Date getFirstDayOfThisQuarter() {
-        Calendar cal = calLastDayThisQuarter();
-        cal.add(Calendar.MONTH, -2);
-        cal.set(Calendar.DAY_OF_MONTH, 1);
-        return stripTime(cal);
-    }
-
-    public Date getLastDayOfThisQuarter() {
-        return stripTime(calLastDayThisQuarter());
-    }
-
-    public Date getFirstDayOfThisYear() {
-        Calendar cal = GregorianCalendar.getInstance();
-        cal.set(Calendar.MONTH, Calendar.JANUARY);
-        cal.set(Calendar.DAY_OF_MONTH, 1);
-        return stripTime(cal);
-    }
-
-    public Date getLastDayOfThisYear() {
-        Calendar cal = GregorianCalendar.getInstance();
-        cal.set(Calendar.MONTH, Calendar.DECEMBER);
-        cal.set(Calendar.DAY_OF_MONTH, 31);
-        return stripTime(cal);
-    }
-
-    public Date getFirstDayOfLastWeek() {
-        Calendar cal = GregorianCalendar.getInstance();
-        int day = cal.get(Calendar.DAY_OF_WEEK);
-        while (day != cal.getFirstDayOfWeek()) {
-            cal.add(Calendar.DAY_OF_WEEK, -1);
-            day--;
-        }
-        cal.add(Calendar.DAY_OF_MONTH, -7);
-        return stripTime(cal);
-    }
-
-    public Date getLastDayOfLastWeek() {
-        Calendar cal = GregorianCalendar.getInstance();
-        int day = cal.get(Calendar.DAY_OF_WEEK);
-        while (day != cal.getFirstDayOfWeek()) {
-            cal.add(Calendar.DAY_OF_WEEK, -1);
-            day--;
-        }
-        cal.add(Calendar.DAY_OF_MONTH, -1);
-        return stripTime(cal);
-    }
-
-    public Date getFirstDayOfLastMonth() {
-        Calendar cal = calLastDayThisMonth();
-        cal.set(Calendar.DAY_OF_MONTH, 1);
-        cal.add(Calendar.MONTH, -1);
-        return stripTime(cal);
-    }
-
-    public Date getLastDayOfLastMonth() {
-        Calendar cal = calLastDayThisMonth();
-        cal.set(Calendar.DAY_OF_MONTH, 1);
-        cal.add(Calendar.DAY_OF_MONTH, -1);
-        return stripTime(cal);
-    }
-
-    public Date getFirstDayOfLastQuarter() {
-        Calendar cal = calLastDayThisQuarter();
-        cal.add(Calendar.MONTH, -5);
-        cal.set(Calendar.DAY_OF_MONTH, 1);
-        return stripTime(cal);
-    }
-
-    public Date getLastDayOfLastQuarter() {
-        Calendar cal = calLastDayThisQuarter();
-        cal.add(Calendar.MONTH, -3);
-        return stripTime(cal);
-    }
-
-    public Date getFirstDayOfLastYear() {
-        Calendar cal = GregorianCalendar.getInstance();
-        cal.set(Calendar.MONTH, Calendar.JANUARY);
-        cal.set(Calendar.DAY_OF_MONTH, 1);
-        cal.add(Calendar.YEAR, -1);
-        return stripTime(cal);
-    }
-
-    public Date getLastDayOfLastYear() {
-        Calendar cal = GregorianCalendar.getInstance();
-        cal.set(Calendar.MONTH, Calendar.JANUARY);
-        cal.set(Calendar.DAY_OF_MONTH, 1);
-        cal.add(Calendar.DAY_OF_MONTH, -1);
-        return stripTime(cal);
-    }
-
-    private Calendar calFirstDayThisWeek() {
-        Calendar cal = GregorianCalendar.getInstance();
-        int day = cal.get(Calendar.DAY_OF_WEEK);
-        while (day != cal.getFirstDayOfWeek()) {
-            cal.add(Calendar.DAY_OF_WEEK, -1);
-            day--;
-        }
-        return cal;
-    }
-
-    private Calendar calFirstDayThisMonth() {
-        Calendar cal = GregorianCalendar.getInstance();
-        cal.set(Calendar.DAY_OF_MONTH, 1);
-        return cal;
-    }
-
-    private Calendar calLastDayThisMonth() {
-        Calendar cal = calFirstDayThisMonth();
-        cal.add(Calendar.MONTH, 1);
-        cal.add(Calendar.DAY_OF_MONTH, -1);
-        return cal;
-    }
-
-    private Calendar calLastDayThisQuarter() {
-        Calendar cal = calFirstDayThisMonth();
-        int m = cal.get(Calendar.MONTH) + 1;
-        while (m % 3 != 0) {
-            cal.add(Calendar.MONTH, 1);
-            m++;
-        }
-        cal.add(Calendar.MONTH, 1);
-        cal.add(Calendar.DAY_OF_MONTH, -1);
-        return cal;
-    }
-
-    /**
-     * All get*DayOf*() functions call this at end to strip the time elements
-     *
-     * @param cal
-     * @return
-     */
-    private Date stripTime(Calendar cal) {
-        return new GregorianCalendar(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).getTime();
-    }
-
-    public static void main(String[] args) {
-        DateRangePrompt dr = new DateRangePrompt();
-        System.out.println("today = " + dr.getToday());
-        System.out.println("yesterday = " + dr.getYesterday());
-        System.out.println("this week = " + dr.getFirstDayOfThisWeek() + " - " + dr.getLastDayOfThisWeek());
-        System.out.println("last week = " + dr.getFirstDayOfLastWeek() + " - " + dr.getLastDayOfLastWeek());
-        System.out.println("this month = " + dr.getFirstDayOfThisMonth() + " - " + dr.getLastDayOfThisMonth());
-        System.out.println("last month = " + dr.getFirstDayOfLastMonth() + " - " + dr.getLastDayOfLastMonth());
-        System.out.println("this quarter = " + dr.getFirstDayOfThisQuarter() + " - " + dr.getLastDayOfThisQuarter());
-        System.out.println("last quarter = " + dr.getFirstDayOfLastQuarter() + " - " + dr.getLastDayOfLastQuarter());
-        System.out.println("this year = " + dr.getFirstDayOfThisYear() + " - " + dr.getLastDayOfThisYear());
-        System.out.println("last year = " + dr.getFirstDayOfLastYear() + " - " + dr.getLastDayOfLastYear());
-
-        for (RangeName rn : RangeName.values()) {
-            System.out.println("Range: " + rn);
-        }
-    }
-
+    
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JComboBox<RangeName> cboRange;
+    private javax.swing.JComboBox cboRange;
     private classicacctapp.ClassicAccDatePicker dateEnd;
     private classicacctapp.ClassicAccDatePicker dateStart;
     private javax.swing.JLabel lblDescription;
@@ -627,7 +289,8 @@ public class DateRangePrompt extends PromptComponent<List<Date>> implements JRPa
 
     @Override
     public void refreshData() {
-        setRangeName(RangeName.THIS_MONTH);
+        // don't update - it resets the date which we don't want
+        //setRangeName(DateRange.THIS_MONTH);
     }
 
     // the default methods of JRParameter - implemented those I thought we needed
@@ -709,7 +372,7 @@ public class DateRangePrompt extends PromptComponent<List<Date>> implements JRPa
     public Object clone() {
 
         try {
-            System.out.println(" %%% Nasty: clone() called on DateRange!");
+            logger.warn(" %%% Nasty: clone() called on DateRange!");
             return super.clone();
         } catch (CloneNotSupportedException ex) {
             return null;

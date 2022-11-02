@@ -16,7 +16,7 @@ import javax.swing.SwingUtilities;
 
 /**
  *
- * @author JAM {javajoe@programmer.net}
+ * @author JAM
  * @since Aug 28, 2019
  */
 public class ReportButton extends javax.swing.JButton implements ActionListener {

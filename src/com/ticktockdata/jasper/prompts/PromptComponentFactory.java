@@ -98,7 +98,7 @@ public final class PromptComponentFactory {
     public static List<PromptComponent> getPromptsForReport(JasperReportImpl report) {
         
         // list to contain prompts as we fetch them
-        List<PromptComponent> prompts = new ArrayList<PromptComponent>();
+        List<PromptComponent> prompts = new ArrayList<>();
         
         // =====================================================================
         // do a pre-check for start / end date parameters
@@ -185,14 +185,14 @@ public final class PromptComponentFactory {
                 if (query != null && !query.trim().isEmpty()) {
                     prompts.add(getPromptComponent(param, LongQueryPrompt.class));
                 } else {
-                    System.out.println("SHOUTING: WE FOUND A LONG AND DON'T KNOW WHAT TO DO WITH IT!");
+                    ReportManager.logger.warn("SHOUTING: WE FOUND A LONG AND DON'T KNOW WHAT TO DO WITH IT!  name = "  + param.getName() + ", desc = " + param.getDescription());
                 }
             } else if (pClass.equals(java.math.BigDecimal.class)) {
                 
                 prompts.add(getPromptComponent(param, BigDecimalPrompt.class));
                 
             } else {
-                System.out.println("SHOUTING: WE FOUND A " + pClass + " PARAMETER AND DON'T KNOW WHAT TO DO WITH IT!");
+                ReportManager.logger.warn("SHOUTING: WE FOUND A " + pClass + " PARAMETER AND DON'T KNOW WHAT TO DO WITH IT!");
             }
         }
         
@@ -201,7 +201,7 @@ public final class PromptComponentFactory {
     }
     
     public static void clearPromptComponentCache() {
-        ReportManager.LOGGER.info("Clearing " + promptMap.size() + " Prompt Components from PromptComponentFactory");
+        ReportManager.logger.info("Clearing " + promptMap.size() + " Prompt Components from PromptComponentFactory");
         promptMap.clear();
     }
     

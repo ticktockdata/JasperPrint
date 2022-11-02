@@ -20,7 +20,7 @@ package com.ticktockdata.jasperserver;
 
 import com.ticktockdata.jasper.AboutDialog;
 import com.ticktockdata.jasper.ConnectionInfo;
-import com.ticktockdata.jasper.ConnectionManager;
+import com.ticktockdata.jasper.ReportConnectionManager;
 import com.ticktockdata.jasper.ReportManager;
 import static com.ticktockdata.jasperserver.ServerManager.LOGGER;
 import java.awt.Dimension;
@@ -242,13 +242,13 @@ public class PrintServer extends Thread {
         } else {
             sb.append("Status = OK: Server is alive and well.\n");
         }
-        if (ConnectionManager.getAllConnections().size() > 0) {
+        if (ReportConnectionManager.getAllConnections().size() > 0) {
             sb.append("The following Database Connections are registered:\n");
-            for (String key : ConnectionManager.getAllConnections().keySet()) {
+            for (String key : ReportConnectionManager.getAllConnections().keySet()) {
                 sb.append("CONNECTION: ");
                 sb.append(key);
                 sb.append(" @ URL: ");
-                sb.append(ConnectionManager.getAllConnections().get(key).getUrl());
+                sb.append(ReportConnectionManager.getAllConnections().get(key).getUrl());
                 sb.append("\n");
             }
         } else {
@@ -264,7 +264,7 @@ public class PrintServer extends Thread {
         if (identifier == null || identifier.trim().isEmpty()) {
             throw new InvalidParameterException("identifier may not be null or empty!");
         }
-        for (String id:  ConnectionManager.getAllConnections().keySet()) {
+        for (String id:  ReportConnectionManager.getAllConnections().keySet()) {
             if (identifier.equals(id)) {
                 return true;
             }
@@ -275,7 +275,7 @@ public class PrintServer extends Thread {
     
     /**
      * Method to add a connection - this should be the only way to add a
-     * connection, as it registers the connection with the ConnectionManager.
+ connection, as it registers the connection with the ReportConnectionManager.
      * <p>If a connection with the same name already exists it will silently
      * unregister and replace that connection.
      * @param connInfo 
@@ -289,15 +289,15 @@ public class PrintServer extends Thread {
         
         // check for existing connection of same name
         ConnectionInfo oldInfo = 
-                ConnectionManager.getAllConnections().get(connInfo.getIdentifier());
+                ReportConnectionManager.getAllConnections().get(connInfo.getIdentifier());
         
         // if already exists, remove and unregister
         if (oldInfo != null) {
-            ConnectionManager.unregisterConnection(oldInfo.getIdentifier());
+            ReportConnectionManager.unregisterConnection(oldInfo.getIdentifier());
         }
         
         // register new connection and add it to list
-        ConnectionManager.registerConnection(connInfo, !silent);
+        ReportConnectionManager.registerConnection(connInfo, !silent);
         
     }
     
@@ -373,7 +373,7 @@ public class PrintServer extends Thread {
     public void close(String identifier, boolean force) {
         
         LOGGER.info("Closing the connection for " + identifier);
-        ConnectionManager.unregisterConnection(identifier);
+        ReportConnectionManager.unregisterConnection(identifier);
         
     }
 

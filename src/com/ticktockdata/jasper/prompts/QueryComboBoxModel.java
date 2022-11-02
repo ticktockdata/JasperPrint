@@ -1,7 +1,7 @@
 
 package com.ticktockdata.jasper.prompts;
 
-import com.ticktockdata.jasper.ConnectionManager;
+import com.ticktockdata.jasper.ReportConnectionManager;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -85,7 +85,7 @@ public class QueryComboBoxModel<T> extends DefaultComboBoxModel<String> {
         ResultSet rs = null;
         
         try {
-            conn = ConnectionManager.getReportConnection(connectionID);
+            conn = ReportConnectionManager.getReportConnection(connectionID);
             stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
             rs = stmt.executeQuery(SQL);
             

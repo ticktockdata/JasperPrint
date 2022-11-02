@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Joseph A Miller
+ * Copyright (C) 2018-2022 Joseph A Miller
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,13 +17,12 @@
 package com.ticktockdata.jasper;
 
 import com.ticktockdata.jasper.PrintExecutor.Action;
-import static com.ticktockdata.jasper.ReportManager.LOGGER;
+import com.ticktockdata.jasper.PrintStatusEvent.StatusCode;
 import com.ticktockdata.jasper.gui.PromptDialog;
 import com.ticktockdata.jasperserver.ServerManager;
 import java.awt.Component;
 import java.io.File;
 import java.io.FileInputStream;
-import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import net.sf.jasperreports.engine.JasperReport;
 import java.util.HashMap;
@@ -31,13 +30,15 @@ import java.util.List;
 import java.util.Map;
 import javax.swing.AbstractButton;
 import javax.swing.SwingUtilities;
+import org.apache.log4j.Level;
+import static com.ticktockdata.jasper.ReportManager.logger;
 
 /**
  * This is the primary class (wrapper) for running a JasperReport. You (the
  * programmer) should generally work with this rather than
  * {@link net.sf.jasperreports.engine.JasperReport}
  *
- * @author JAM {javajoe@programmer.net}
+ * @author JAM
  * @since Aug 29, 2018
  */
 public class JasperReportImpl implements Runnable {
@@ -65,8 +66,7 @@ public class JasperReportImpl implements Runnable {
      * This is used to make JasperReport accessible, but is only valid during
      * filling of report
      */
-    private JasperReport jReport = null;
-
+    private JasperReport currentJasperReport = null;
     /**
      * fields required by Action
      */
@@ -96,9 +96,10 @@ public class JasperReportImpl implements Runnable {
      * Used by executeReport so we know if the report successfully filled or
      * not.
      */
-    private boolean reportFilled = false;
-    private boolean error = false;
-    private boolean canceled = false;  // flag that can be used to cancel execution
+    private boolean processing = false;    // becomes true if execute() is called, false when finished = true
+    private boolean error = false;      // becomes true if execution error
+    private boolean canceled = false;   // becomes true if execution canceled
+    private StatusCode status = StatusCode.UNDEFINED;
     private FillMonitor monitor = null;
 
     /**
@@ -129,8 +130,8 @@ public class JasperReportImpl implements Runnable {
      * @return the jasperReport
      */
     public JasperReport getJasperReport() {
-        if (jReport != null) {
-            return jReport;
+        if (currentJasperReport != null) {
+            return currentJasperReport;
         } else {
             return ReportManager.getJasperReport(reportPath);
         }
@@ -143,15 +144,16 @@ public class JasperReportImpl implements Runnable {
      * @param prefs
      */
     public void execute(PrintPreferences prefs) {
-        System.out.println("Calling execute w/prefs = " + prefs);
+
+        logger.trace("Calling execute w/prefs = " + prefs);
         if (prefs != null) {
             this.setCopies(prefs.getCopies());
             this.setShowDialog(prefs.isShowPrintDialog());
             this.setPrinter(prefs.getPrinterName());
             this.setPrintAction(prefs.getPrintAction());
-            System.out.println("execute, prefs set - PrintAction = " + this.getPrintAction());
+            logger.debug("execute, prefs set - PrintAction = " + this.getPrintAction());
         } else {
-            System.out.println("Execute called with null prefs");
+            logger.warn("Execute called with null prefs");
         }
         execute();
     }
@@ -166,20 +168,54 @@ public class JasperReportImpl implements Runnable {
      * job to a {@link java.util.concurrent.ThreadPoolExecutor}
      * (Executors.newSingleThreadExecutor()) which in turn calls the
      * {@link run()} method of this class.
-     *
+     * <p>
      */
     public void execute() {
-        LOGGER.debug("execute() called, the printer is: " + printer + ", action = " + this.getPrintAction());
+        logger.debug("execute() called, the printer is: " + printer + ", action = " + this.getPrintAction());
+
+        status = StatusCode.UNDEFINED;
+        error = false;
+        canceled = false;
+        processing = true;
+
         setPrintButtonEnabled(false);
-        // notify listener that report is executing
-        firePrintStatusChanged(PrintStatusEvent.EXECUTE_START);
-        // if user cancels execute then return
-        if (isCanceled()) {
-            setPrintButtonEnabled(true);
-            return;
-        }
         ReportManager.executeReport(this);
         setPrintButtonEnabled(true);
+    }
+
+    /**
+     * Calls {@link execute()} on a secondary thread and waits for it to
+     * complete.
+     * <p>
+     * <b>Warning: </b> This should not be called from the EventDispatchThread!
+     *
+     * @return
+     */
+    public boolean executeAndWait() {
+
+        boolean success = false;
+
+        try {
+
+            // ensure that execute doesn't happen on EDT
+            new Thread(() -> {
+                execute();
+            }).start();
+
+            Thread.sleep(50);
+
+            while (isProcessing()) {
+                Thread.sleep(25);
+            }
+
+            success = !(isCanceled() || isError());
+
+        } catch (Throwable ex) {
+            logger.error("Failed to convert to PDF: " + ex.getLocalizedMessage(), ex);
+        }
+
+        return success;
+
     }
 
     /**
@@ -250,12 +286,9 @@ public class JasperReportImpl implements Runnable {
             printButton.setEnabled(true);
         }
 
-        System.out.println("set print button enabled: " + printButton.isEnabled());
+        logger.trace("set print button enabled: " + printButton.isEnabled());
     }
 
-    private boolean isPrintButtonEnabled() {
-        return (printButton == null ? false : printButton.isEnabled());
-    }
 
     /**
      * public access to executor required so outside classes can cancel the
@@ -295,10 +328,10 @@ public class JasperReportImpl implements Runnable {
     public void setPrintAction(Action action) {
 
         if (printExecutor != null && printAction != null && printAction.equals(action)) {
-            LOGGER.info("The print action is already set, don't set a new one!");
+            logger.info("The print action is already set, don't set a new one!");
             return;
         }
-        System.out.println("Setting print action to " + action);
+        logger.debug("Setting print action to " + action);
         // this method sets the correct PrintExecutor per the 
         switch (action) {
             case PRINT:
@@ -379,11 +412,44 @@ public class JasperReportImpl implements Runnable {
     }
 
     /**
+     * Is true from the time {@link execute()} is called until the report is
+     * either complete, canceled or error.
+     * <p>
+     * If your code waits on report to complete by checking this property, then
+     * ensure that execution was successful by checking that
+     * {@link isCanceled()} and {@link isError()} both return false, or
+     * {@link getStatus()} returns {@link StatusCode#COMPLETE}
      *
-     * @return true if the report was canceled by PromptDialog
+     * @return
+     */
+    public boolean isProcessing() {
+        return processing;
+    }
+
+    /**
+     *
+     * @return true if the report execution was canceled for any reason
      */
     public boolean isCanceled() {
         return canceled;
+    }
+
+    /**
+     *
+     * @return true if executing the report invokes an error
+     */
+    public boolean isError() {
+        return error;
+    }
+
+    /**
+     * Returns the last fired status of execution, or UNDEFINED if called before
+     * first execute() or between execute() and {@link StatusCode#QUEUED}
+     *
+     * @return
+     */
+    public StatusCode getStatus() {
+        return status;
     }
 
     /**
@@ -395,7 +461,8 @@ public class JasperReportImpl implements Runnable {
     public void setCanceled(boolean cancel) {
         canceled = cancel;
         if (cancel == true) {
-            firePrintStatusChanged(PrintStatusEvent.EXECUTE_CANCELED);
+            firePrintStatusChanged(StatusCode.CANCELED);
+            logger.debug("The report execution was cancelled by user.");
             if (getPrintButton() != null) {
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
@@ -410,7 +477,7 @@ public class JasperReportImpl implements Runnable {
 
     /**
      * @return the number of seconds to wait before showing a cancelable
-     * progress dialog.
+     *         progress dialog.
      */
     public int getProgressDelay() {
         return progressDelay;
@@ -433,20 +500,22 @@ public class JasperReportImpl implements Runnable {
      * The File is obtained from the reportPath parameter by calling
      * {@link ReportManager}.getReportFile(reportPath)
      *
-     * @return
-     * @throws InvalidParameterException if the report's path is not valid.
+     * @return the name of the report, or null if not exist
      */
     public String getReportName() {
 
         if (reportName == null) {
             long startTime = System.currentTimeMillis();
             if (reportPath != null) {
+
                 File f = ReportManager.getReportFile(reportPath);
-                FileInputStream fis = null;
-                try {
-                    LOGGER.debug("Extracting Report Name by parsing text file");
-                    StringBuilder sb = new StringBuilder();
-                    fis = new FileInputStream(f);
+                if (f == null) {
+                    return null;
+                }
+                //FileInputStream fis = null;
+                logger.debug("Extracting Report Name by parsing text file");
+                StringBuilder sb = new StringBuilder();
+                try (FileInputStream fis = new FileInputStream(f)) {
                     while (fis.available() > 0) {
                         sb.append((char) fis.read());
                         if (sb.toString().toLowerCase().endsWith("name=\"")) {
@@ -454,8 +523,8 @@ public class JasperReportImpl implements Runnable {
                             while (true) {
                                 char c = (char) fis.read();
                                 if (c == '"') {
-                                    reportName = sb.toString().trim();
-                                    LOGGER.trace("Name extracted in " + (System.currentTimeMillis() - startTime));
+                                    reportName = sb.toString().trim().replaceAll("&apos;", "'");
+                                    logger.trace("Name extracted in " + (System.currentTimeMillis() - startTime));
                                     return reportName;
                                 } else {
                                     sb.append(c);
@@ -463,14 +532,11 @@ public class JasperReportImpl implements Runnable {
                             }
                         }
                     }
+
                 } catch (Exception ex) {
-                } finally {
-                    try {
-                        fis.close();
-                    } catch (Exception e) {
-                    }
-                    LOGGER.trace("Closed the file input stream");
+                    logger.warn("Failed to extract report name: " + ex.getLocalizedMessage(), ex);
                 }
+
                 // if we can't extract the name from file then use file name
                 reportName = f.getName();
                 return reportName;
@@ -515,19 +581,22 @@ public class JasperReportImpl implements Runnable {
         statusListeners.remove(listener);
     }
 
-    public void firePrintStatusChanged(int status) {
+    public void firePrintStatusChanged(StatusCode status) {
+
+        this.status = status;
 
         // change status of this report
         switch (status) {
-            case PrintStatusEvent.EXECUTE_START:
-                error = false;
-                canceled = false;
-                break;
-            case PrintStatusEvent.EXECUTE_ERROR:
+            case ERROR:
                 error = true;
+                processing = false;
                 break;
-            case PrintStatusEvent.EXECUTE_CANCELED:
+            case CANCELED:
                 canceled = true;
+                processing = false;
+                break;
+            case COMPLETE:
+                processing = false;
                 break;
         }
 
@@ -550,118 +619,104 @@ public class JasperReportImpl implements Runnable {
      * <li>The FillMonitor's reportFinished(JasperPrint) event calls this
      * report's reportExecutor.execute() to print / preview / export the report.
      * </ol>
-     * At any point an error or cancel will (should) stop the process and 
+     * At any point an error or cancel will (should) stop the process and
      * generate a PrintStatusEvent to that effect.
      */
     @Override
     public void run() {
 
-        JasperReport jasperReport = null;
+        java.awt.Color bg = null;
 
         try {
+
+            logger.setLevel(Level.TRACE);
+
+            // fire property change that lets interested parties know execution has started
+            firePrintStatusChanged(StatusCode.STARTED);
+
             // get jasperReport from ReportManager
-            jasperReport = getJasperReport();
-            if (jasperReport == null) {
-                firePrintStatusChanged(PrintStatusEvent.EXECUTE_ERROR);
+            currentJasperReport = getJasperReport();
+
+            if (currentJasperReport == null) {
+                firePrintStatusChanged(StatusCode.ERROR);
                 return;
             }
 
-            reportName = jasperReport.getName();
+            firePrintStatusChanged(StatusCode.COMPILED);
 
-        } catch (Exception x1) {
-            LOGGER.error("Failed to generate a JasperReport from file: " + reportPath, x1);
-            firePrintStatusChanged(PrintStatusEvent.EXECUTE_ERROR);
-            return;
-        }
+            reportName = currentJasperReport.getName();
+            logger.debug("The thread is filling on EDT? " + SwingUtilities.isEventDispatchThread());
 
-        LOGGER.debug("The thread is filling on EDT? " + SwingUtilities.isEventDispatchThread());
-
-        // Multiple PromptFillers can be registered but not guaranteed in what order they will be called.
-        for (PrintPromptFiller filler : promptFillers) {
-            LOGGER.debug("calling fillPrompts on a PrintPromptFiller");
-            if (filler.fillPrompts(this) == false) {
-                firePrintStatusChanged(PrintStatusEvent.EXECUTE_ERROR);
-                return;
-            }
-        }
-
-        // if set then show the prompts dialog.
-        if (isPromptForParameters()) {
-            try {
-                // set jasperReport to outside variable so it is accessible
-                // by the PromptDialog w/o reloading it.
-                jReport = jasperReport;
-                // clear the canceled flag (this cleared by firePrintStatusChanged(PrintStatusEvent.EXECUTE_START);
-                canceled = false;
-                SwingUtilities.invokeAndWait(new Runnable() {
-                    @Override
-                    public void run() {
-                        PromptDialog.showPromptDialog(parent, JasperReportImpl.this);
-                        //JOptionPane.showMessageDialog(parent, "Need to show the prompt dialog!");
-                        setParameter("P_COMPANY_NAME", "Implement Prompt Param dialog!");
-                    }
-                });
-            } catch (Exception ex) {
-                LOGGER.error("Unknown exception occured during prompt dialog. " + ex, ex);
-                firePrintStatusChanged(PrintStatusEvent.EXECUTE_ERROR);
-            } finally {
-                // do NOT cache jasperReport longer then necessary!
-                jReport = null;
-                if (canceled) {
-                    LOGGER.debug("The report execution was cancelled by user.");
-                    firePrintStatusChanged(PrintStatusEvent.EXECUTE_CANCELED);
+            // Multiple PromptFillers can be registered but not guaranteed in what order they will be called.
+            for (PrintPromptFiller filler : promptFillers) {
+                logger.debug("calling fillPrompts on a PrintPromptFiller");
+                if (!filler.fillPrompts(this)) {
+                    firePrintStatusChanged(StatusCode.CANCELED);
                     return;
                 }
             }
 
-        }
+            // don't think it can be canceled at this point, but make sure
+            if (canceled) {
+                firePrintStatusChanged(StatusCode.CANCELED);
+                return;
+            }
 
-        // set the button's background color to have visible indicator of action
-        java.awt.Color bg = (printButton == null ? null : printButton.getBackground());
-        if (printButton != null) {
-            printButton.setBackground(bg.darker().darker());
-        }
-
-        // at this point we should have a valid JasperReport
-        // this is never the EDT, as run is started by a SingleThreadExecutor
-        try {
-
-            SwingUtilities.invokeAndWait(new Runnable() {
-                @Override
-                public void run() {
-                    monitor = new FillMonitor(JasperReportImpl.this);
+            // if set then show the prompts dialog.
+            if (isPromptForParameters()) {
+                SwingUtilities.invokeAndWait(() -> {
+                    logger.debug("calling showPromptDialog...");
+                    PromptDialog.showPromptDialog(parent, JasperReportImpl.this);
+                });
+                logger.trace("did fill parameters");
+                if (canceled) {
+                    logger.warn("canceled when prompting for params!");
+                    return; // canceled event fired via setCanceled(true)
                 }
-            });
-//            }
+            }
 
-            LOGGER.trace("Starting a Waiter thread and calling .join");
-            Thread waiter = new Thread() {
-                @Override
-                public void run() {
-                    monitor.startFill();
-                    while (monitor.isFilling()) {
-                        try {
-                            Thread.sleep(5);
-                        } catch (Exception tx) {
-                        }
+            // set the button's background color to have visible indicator of action
+            bg = (printButton == null ? null : printButton.getBackground());
+            if (printButton != null) {
+                printButton.setBackground(bg.darker().darker());
+            }
+
+            // at this point we should have a valid JasperReport
+            // this is never the EDT, as run is started by a SingleThreadExecutor
+            // NOTE: even though this is invokeAndWait it does not block while report is filling
+            SwingUtilities.invokeAndWait(() -> {
+                monitor = new FillMonitor(JasperReportImpl.this);
+                logger.debug("started fill monitor");
+            });
+
+            logger.trace("Starting a Waiter thread and calling .join");
+            Thread waiter = new Thread(() -> {
+                monitor.startFill();
+                while (monitor.isFilling()) {
+                    try {
+                        Thread.sleep(5);
+                    } catch (Exception tx) {
+                        logger.error("Error while waiting on fill monitor", tx);
                     }
                 }
-            };
+            });
+
             // start the waiter thread
             waiter.start();
             // current thread waits until waiter dies.
             waiter.join();
 
-            LOGGER.trace("Waiter has joined!");
-            error = false;
+            logger.trace("Waiter has joined!");
+            error = false;  // why?
 
-        } catch (Exception x2) {
-            LOGGER.error("Error while generating report: " + getReportName(), x2);
-            firePrintStatusChanged(PrintStatusEvent.EXECUTE_ERROR);
+        } catch (Exception err) {
+            logger.error("Error while generating report: " + err.getLocalizedMessage(), err);
+            firePrintStatusChanged(StatusCode.ERROR);
             // remove this report from cache on error, so it can be tried again.
             ReportManager.removeFromCache(reportPath);
         } finally {
             monitor = null; // free resource
+            currentJasperReport = null;
             if (bg != null) {
                 printButton.setBackground(bg);
             }
@@ -808,4 +863,5 @@ public class JasperReportImpl implements Runnable {
     public void setOverwriteExportFile(boolean overwriteExportFile) {
         this.overwriteExportFile = overwriteExportFile;
     }
+
 }

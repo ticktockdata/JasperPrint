@@ -16,9 +16,8 @@
  */
 package com.ticktockdata.jasper;
 
-import static com.ticktockdata.jasper.ReportManager.LOGGER;
+import com.ticktockdata.jasper.PrintStatusEvent.StatusCode;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -26,6 +25,7 @@ import net.sf.jasperreports.engine.JasperPrint;
 import net.sf.jasperreports.engine.fill.AsynchronousFillHandle;
 import net.sf.jasperreports.engine.fill.AsynchronousFilllListener;
 import net.sf.jasperreports.engine.fill.FillListener;
+import static com.ticktockdata.jasper.ReportManager.logger;
 
 /**
  * This class takes care of both filling and viewing / printing / executing a
@@ -37,8 +37,11 @@ import net.sf.jasperreports.engine.fill.FillListener;
  * {@link java.awt.EventDispatchThread} Thread, but this class itself must be
  * run from EDT in order to prevent issues with Fill Parameter and Processing
  * dialogs.
+ * <p>
+ * This class will fire {@link PrintStatusEvent} for FILLED, COMPLETE,
+ CANCELED, ERROR
  *
- * @author JAM {javajoe@programmer.net}
+ * @author JAM
  * @since Aug 29, 2018
  */
 public class FillMonitor extends javax.swing.JDialog implements AsynchronousFilllListener, FillListener {
@@ -47,11 +50,10 @@ public class FillMonitor extends javax.swing.JDialog implements AsynchronousFill
     private AsynchronousFillHandle reportHandle;
     private JasperReportImpl report;
     private Timer timer;
+    private boolean canceled = true;
+    private boolean error = true;
+    private boolean stopped = false;
 
-    /**
-     * Used internally to determine status of report filling
-     */
-    private int status = PrintStatusEvent.STATUS_UNDEFINED;
 
     /**
      * Creates new form FillMonitor
@@ -71,11 +73,11 @@ public class FillMonitor extends javax.swing.JDialog implements AsynchronousFill
             reportHandle = AsynchronousFillHandle.createHandle(
                     report.getJasperReport(),
                     report.getParams(),
-                    ConnectionManager.getReportConnection(report.getConnectionID()));
+                    ReportConnectionManager.getReportConnection(report.getConnectionID()));
         } catch (Exception ex) {
-            LOGGER.error("Error creating AsynchronousFillHandle for report!", ex);
-            status = PrintStatusEvent.EXECUTE_ERROR;
-            dispose();
+            logger.error("Error creating AsynchronousFillHandle for report!", ex);
+            error = true;
+            stopMonitor();
             return;
         }
 
@@ -105,40 +107,33 @@ public class FillMonitor extends javax.swing.JDialog implements AsynchronousFill
             // never show!
         } else {
             // this needs to delay and only show if report is too slow in completing.
-            timer = new Timer((report.getProgressDelay() * 1000), new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    FillMonitor.this.setVisible(true);
-                }
+            timer = new Timer((report.getProgressDelay() * 1000), (ActionEvent e) -> {
+                FillMonitor.this.setVisible(true);
             });
             timer.setRepeats(false);
             timer.start();
         }
     }
 
-    
     /**
-     * Dispose stops the timer and fires the PrintStatusEvent on the 
-     * report.
+     * This must be called to terminate monitor. Is called from the
+     * reportCanceled / reportFillError / reportFinished methods
      */
-    @Override
-    public void dispose() {
-        this.setVisible(false);
+    private void stopMonitor() {
+
         if (timer != null) {
             timer.stop();
             timer = null;
         }
+        
+        this.setVisible(false);
+        stopped = true; // must be set to true or isFilling will never return false!
+        dispose();
 
-        // tell the button or other listeners that we have finished
-        if (status != PrintStatusEvent.STATUS_UNDEFINED) {
-            report.firePrintStatusChanged(status);
-        }
-        super.dispose();
     }
 
-    
     /**
-    /**
+     * /**
      * Starts the actual report filling process.
      */
     public void startFill() {
@@ -151,7 +146,7 @@ public class FillMonitor extends javax.swing.JDialog implements AsynchronousFill
      * @return
      */
     public boolean isFilling() {
-        return status == PrintStatusEvent.STATUS_UNDEFINED || status == PrintStatusEvent.EXECUTE_START;
+        return !stopped;    // && (status == PrintStatusEvent.STATUS_UNDEFINED || status == PrintStatusEvent.STARTED);
     }
 
     /**
@@ -159,11 +154,11 @@ public class FillMonitor extends javax.swing.JDialog implements AsynchronousFill
      * @return true if there was an error, false otherwise
      */
     public boolean isError() {
-        return status == PrintStatusEvent.EXECUTE_ERROR;
+        return error;
     }
 
     public boolean isCanceled() {
-        return status == PrintStatusEvent.EXECUTE_CANCELED;
+        return canceled;
     }
 
     /**
@@ -239,13 +234,12 @@ public class FillMonitor extends javax.swing.JDialog implements AsynchronousFill
         try {
             reportHandle.cancellFill();
             report.getPrintExecutor().cancelExecute();
-            LOGGER.info("User Canceled Report execution!");
+            logger.info("User Canceled Report execution!");
         } catch (Exception ex) {
-            LOGGER.error("Error canceling the report execution!", ex);
+            logger.error("Error canceling the report execution!", ex);
         }
 
     }//GEN-LAST:event_cmdCancelActionPerformed
-
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -257,33 +251,32 @@ public class FillMonitor extends javax.swing.JDialog implements AsynchronousFill
     @Override
     public void reportFinished(JasperPrint jasperPrint) {
 
-        LOGGER.info("Finished filling report!");
+        report.firePrintStatusChanged(StatusCode.FILLED);
 
         if (this.report.getPrintExecutor().execute(jasperPrint)) {
-            status = PrintStatusEvent.EXECUTE_COMPLETE;
+            report.firePrintStatusChanged(StatusCode.COMPLETE);
         }
 
-        dispose();
+        stopMonitor();
     }
 
     @Override
     public void reportCancelled() {
-        LOGGER.info("Report was canceled by user!");
-        status = PrintStatusEvent.EXECUTE_CANCELED;
-        dispose();
+        canceled = true;
+        report.firePrintStatusChanged(StatusCode.CANCELED);
+        stopMonitor();
     }
 
     @Override
     public void reportFillError(Throwable t) {
-        LOGGER.error("Failed to fill report!", t);
-        status = PrintStatusEvent.EXECUTE_ERROR;
-        dispose();
+        error = true;
+        report.firePrintStatusChanged(StatusCode.ERROR);
+        stopMonitor();
     }
-    
-    
+
     @Override
     public void pageGenerated(JasperPrint jasperPrint, final int pageIndex) {
-        LOGGER.debug("Filled page " + pageIndex + " of report " + report.getReportName());
+        logger.debug("Filled page " + pageIndex + " of report " + report.getReportName());
         pageCount = pageIndex;
         SwingUtilities.invokeLater(new Runnable() {
             @Override
@@ -304,10 +297,10 @@ public class FillMonitor extends javax.swing.JDialog implements AsynchronousFill
                     progressBar.setMinimum(0);
                     progressBar.setIndeterminate(false);
                     progressBar.setString(null);
-                    LOGGER.debug("Now updating the pages for view, report " + report.getReportName());
+                    logger.debug("Now updating the pages for view, report " + report.getReportName());
                 }
                 progressBar.setValue(pageIndex);
-                LOGGER.trace("Updated page " + pageIndex + " of report " + report.getReportName());
+                logger.trace("Updated page " + pageIndex + " of report " + report.getReportName());
 
                 if (pageIndex == getPageCount()) {
                     progressBar.setIndeterminate(true);

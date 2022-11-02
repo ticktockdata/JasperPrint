@@ -14,8 +14,11 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 
 /**
- *
- * @author JAM {javajoe@programmer.net}
+ * In order to use the ReportsPanel to automatically generate buttons, etc,
+ * the constructor ReportsPanel(String rootPath) must be used, and the parent 
+ * container must have layout set as FlowLayout.
+ * 
+ * @author JAM
  */
 public class ReportsPanel extends javax.swing.JPanel {
 
@@ -31,23 +34,23 @@ public class ReportsPanel extends javax.swing.JPanel {
     public ReportsPanel(String rootPath) {
         this.rootDir = rootPath;
         initComponents();
-        initReportPanels();
+        generateReportPanels();
     }
 
     /**
-     *
+     * This can be called from outside if desired to re-create 
      * @return number of report buttons created, or -1 if error;
      */
-    private int initReportPanels() {
+    public int generateReportPanels() {
 
         int ct = 0;
-
+        
         try {
             // first remove all old components
             for (Component c : pnlTabPane.getComponents()) {
                 pnlTabPane.remove(c);
             }
-
+            
             // create a file of the root directory
             File rf = new File(rootDir);
             if (rf == null || !rf.exists() || !rf.isDirectory()) {
@@ -62,7 +65,7 @@ public class ReportsPanel extends javax.swing.JPanel {
 
             // list all directories within this directory
             for (File reportDir : allDirs) {
-
+                
                 // list all reports
                 File[] reports = reportDir.listFiles((File ff) -> {
                     return !ff.isDirectory() && ff.getName().toLowerCase().endsWith(".jrxml") && !ff.getName().startsWith("_");
@@ -75,8 +78,10 @@ public class ReportsPanel extends javax.swing.JPanel {
                 
                 // create the panel for this directory's reports
                 JPanel panel = new JPanel();
-                panel.setMinimumSize(new Dimension(100, 200));
+                panel.setMinimumSize(new Dimension(100, 100));
+                panel.setPreferredSize(new Dimension(200, 300));
                 panel.setName(reportDir.getName());
+                panel.setBorder(javax.swing.BorderFactory.createRaisedSoftBevelBorder());
                 FlowLayout fl = new FlowLayout(FlowLayout.LEADING, 12, 12);
                 panel.setLayout(fl);
 
@@ -92,7 +97,7 @@ public class ReportsPanel extends javax.swing.JPanel {
                 pnlTabPane.add(panel);
 
             }
-
+            
         } catch (Exception ex) {
             System.out.println("Error occurred during loading reports: " + ex.getLocalizedMessage());
             ex.printStackTrace();
@@ -113,18 +118,11 @@ public class ReportsPanel extends javax.swing.JPanel {
 
         pnlTabPane = new javax.swing.JTabbedPane();
 
-        pnlTabPane.setTabPlacement(javax.swing.JTabbedPane.RIGHT);
+        setBorder(new javax.swing.border.SoftBevelBorder(javax.swing.border.BevelBorder.LOWERED));
+        setLayout(new java.awt.BorderLayout());
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(pnlTabPane, javax.swing.GroupLayout.DEFAULT_SIZE, 400, Short.MAX_VALUE)
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(pnlTabPane, javax.swing.GroupLayout.DEFAULT_SIZE, 300, Short.MAX_VALUE)
-        );
+        pnlTabPane.setTabPlacement(javax.swing.JTabbedPane.RIGHT);
+        add(pnlTabPane, java.awt.BorderLayout.CENTER);
     }// </editor-fold>//GEN-END:initComponents
 
     public static void main(String[] args) {

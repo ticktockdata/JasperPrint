@@ -18,7 +18,7 @@ package com.ticktockdata.jasperserver;
 
 import com.ticktockdata.db.PgUtils;
 import com.ticktockdata.jasper.ConnectionInfo;
-import com.ticktockdata.jasper.ConnectionManager;
+import com.ticktockdata.jasper.ReportConnectionManager;
 import com.ticktockdata.jasper.JasperPrintMain;
 import static com.ticktockdata.jasper.JasperPrintMain.LOGGER;
 import static com.ticktockdata.jasper.JasperPrintMain.addToClassPath;
@@ -190,7 +190,7 @@ public class CommandLineProcessor {
         //boolean silent = getSilentFromArgs(args);
         
         String identifier = getArgumentValue(args, "-id", "-n");
-        if (identifier == null) identifier = ConnectionManager.DEFAULT_CONNECTION_NAME;
+        if (identifier == null) identifier = ReportConnectionManager.DEFAULT_CONNECTION_NAME;
         ConnectionInfo info = new ConnectionInfo(identifier);
         
         
@@ -420,7 +420,7 @@ public class CommandLineProcessor {
             return;
         }
         
-        ConnectionManager.addToClasspath(new File(driver));
+        ReportConnectionManager.addToClasspath(new File(driver));
         PgUtils.restorePgDatabase(host, dbName, file);
         
     }
@@ -538,7 +538,7 @@ public class CommandLineProcessor {
         boolean silent = getSilentFromArgs(args);
         
         if (id == null) {
-            id = ConnectionManager.DEFAULT_CONNECTION_NAME;
+            id = ReportConnectionManager.DEFAULT_CONNECTION_NAME;
         }
         
         try {

@@ -273,7 +273,7 @@ public class PrintAction extends PrintExecutor {
             return true;
 
         } catch (JRException ex) {
-            ReportManager.LOGGER.error("Failed to print report!", ex);
+            ReportManager.logger.error("Failed to print report!", ex);
             return false;
         }
 

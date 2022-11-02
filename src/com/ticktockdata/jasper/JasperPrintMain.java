@@ -80,7 +80,7 @@ public class JasperPrintMain {
         
             JasperReportImpl rpt2 = new JasperReportImpl("/home/default/share/Clients/Penwood/2018-08-08_Panels_Update/PanelShopOrder.jrxml");
 
-    //        rpt2.setParameter("REPORT_CONNECTION", ConnectionManager.getReportConnection());
+    //        rpt2.setParameter("REPORT_CONNECTION", ReportConnectionManager.getReportConnection());
             rpt2.setParameter("P_DATE_PRODUCTION", new Date(118, 5, 13));
     //        Date reportDate = new Date(118, 5, 13);
     //        System.out.println("ReportDate = " + reportDate);
@@ -161,7 +161,7 @@ public class JasperPrintMain {
             connInfo.setUser("postgres");
             connInfo.setPassword("true");
             
-            return ConnectionManager.registerConnection(connInfo, false);
+            return ReportConnectionManager.registerConnection(connInfo, false);
             
         } catch (final Exception ex) {
             SwingUtilities.invokeLater(new Runnable() {
@@ -329,7 +329,7 @@ public class JasperPrintMain {
                 + "Some Standard OPTIONAL arguments (each with [default value]): \n"
                 + "--host  [" + ServerManager.LOCALHOST + "] (which host to connect to, specify to print to remote server\n"
                 + "--port [" + ServerManager.DEFAULT_SERVER_PORT + "] (the port used by the Print Server)\n"
-                + "--identifier [" + ConnectionManager.DEFAULT_CONNECTION_NAME + "] (also -id, the 'Name' of the database connection)\n"
+                + "--identifier [" + ReportConnectionManager.DEFAULT_CONNECTION_NAME + "] (also -id, the 'Name' of the database connection)\n"
                 + "--fonts (path of directory containing JasperReport font extensions (must be .jar files))\n"
                 + "--silent OR -si (suppresses visible Message Boxes)\n"
                 + "--verbose OR -v (increases terminal output)\n"
@@ -351,7 +351,7 @@ public class JasperPrintMain {
                 + "a Database Connection, all arguments are required\n"
                 + "except the identifier and port.\n"
                 + "Identifier is used to specify a connection with a\n"
-                + "different name then the default, which is '" + ConnectionManager.DEFAULT_CONNECTION_NAME + "'.\n"
+                + "different name then the default, which is '" + ReportConnectionManager.DEFAULT_CONNECTION_NAME + "'.\n"
                 + "Port may be specified if you wish to run multiple\n"
                 + "Servers on a single host, or to use a port other than " + ServerManager.DEFAULT_SERVER_PORT+ "\n"
                 + "\n"
@@ -571,7 +571,7 @@ public class JasperPrintMain {
                 + "Optionally specify --port if you have more than one\n"
                 + "Print Server running.  Available only for " + ServerManager.LOCALHOST + "\n"
                 + "If the --identifier (or -id) parameter is not supplied\n"
-                + "it will attempt to close a connection named " + ConnectionManager.DEFAULT_CONNECTION_NAME + "\n"
+                + "it will attempt to close a connection named " + ReportConnectionManager.DEFAULT_CONNECTION_NAME + "\n"
                 + "\n"
                 + "Sample of usage (close connection named MyConn):\n"
                 + "CLOSE --identifier MyConn\n"

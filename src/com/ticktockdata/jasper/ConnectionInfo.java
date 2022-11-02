@@ -17,7 +17,7 @@
 
 package com.ticktockdata.jasper;
 
-import static com.ticktockdata.jasper.ConnectionManager.LOGGER;
+import static com.ticktockdata.jasper.ReportConnectionManager.LOGGER;
 import java.io.File;
 import java.io.Serializable;
 import java.security.InvalidParameterException;
@@ -53,10 +53,10 @@ public class ConnectionInfo implements Serializable {
     
     /**
      * Default constructor with no params.  This is just a forward call:
-     * {@code this(ConnectionManager.DEFAULT_CONNECTION_NAME);}
+     * {@code this(ReportConnectionManager.DEFAULT_CONNECTION_NAME);}
      */
     public ConnectionInfo() {
-        this(ConnectionManager.DEFAULT_CONNECTION_NAME);
+        this(ReportConnectionManager.DEFAULT_CONNECTION_NAME);
     }
     
     
@@ -156,9 +156,9 @@ public class ConnectionInfo implements Serializable {
     
     /**
      * This is called to get the database connection.
-     * Should only be called internally and by ConnectionManager.
-     * Synchronized for thread safety.
-     * <p>Shows an error message (JOptionPane) if no connection can be made.
+     * Should only be called internally and by ReportConnectionManager.
+ Synchronized for thread safety.
+ <p>Shows an error message (JOptionPane) if no connection can be made.
      * @return null if no connection can be made
      */
     protected synchronized Connection getConnection() {
@@ -196,8 +196,8 @@ public class ConnectionInfo implements Serializable {
 
     /**
      * This closes the database connection, if it is not already closed.
-     * Should only be called internally and by ConnectionManager.
-     * Synchronized for thread safety.
+     * Should only be called internally and by ReportConnectionManager.
+ Synchronized for thread safety.
      */
     protected synchronized void closeConnection() {
         
@@ -346,7 +346,7 @@ public class ConnectionInfo implements Serializable {
                     continue;
                 }
                 if (jar.exists()) {
-                    ConnectionManager.addToClasspath(jar);
+                    ReportConnectionManager.addToClasspath(jar);
                     driverJars.add(jar);
                 } else {
                     JOptionPane.showMessageDialog(null, "The specified Driver Jar does not exist!\n" + jar.getAbsolutePath(), "Invalid Parameter!", JOptionPane.WARNING_MESSAGE);

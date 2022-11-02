@@ -68,7 +68,7 @@ public class TestPrint extends javax.swing.JFrame {
         cInfo.setUrl("jdbc:postgresql://localhost:5432/joeswcr");
         cInfo.setUser("postgres");
         cInfo.setPassword("true");
-        ConnectionManager.registerConnection(cInfo, false);
+        ReportConnectionManager.registerConnection(cInfo, false);
 
     }
 

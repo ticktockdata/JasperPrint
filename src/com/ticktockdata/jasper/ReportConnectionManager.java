@@ -17,7 +17,7 @@
 
 package com.ticktockdata.jasper;
 
-import static com.ticktockdata.jasper.ConnectionManager.DEFAULT_CONNECTION_NAME;
+import static com.ticktockdata.jasper.ReportConnectionManager.DEFAULT_CONNECTION_NAME;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.security.InvalidParameterException;
@@ -31,19 +31,19 @@ import org.apache.log4j.Logger;
  * This class manages one or more database Connections used by JasperPrint.
  * Before using JasperPrint you must register a ConnectionInfo with this 
  * manager.  This Manager takes care of caching / closing connections during
- * runtime, but you should call <code>ConnectionManager.unregisterAllConnections()
- * </code> before terminating your application to ensure that all database
+ * runtime, but you should call <code>ReportConnectionManager.unregisterAllConnections()
+ </code> before terminating your application to ensure that all database
  * connections are closed properly.
- * <p>The ConnectionManager does not save any preferences or remember the 
- * connection parameters from one session to the next, that is the
- * responsibility of your application.
- * @author JAM {javajoe@programmer.net}
+ * <p>The ReportConnectionManager does not save any preferences or remember the 
+ connection parameters from one session to the next, that is the
+ responsibility of your application.
+ * @author JAM
  * @since Aug 23, 2018
  */
-public class ConnectionManager {
+public class ReportConnectionManager {
     
     
-    public static final Logger LOGGER = Logger.getLogger(ConnectionManager.class);
+    public static final Logger LOGGER = Logger.getLogger(ReportConnectionManager.class);
     
     /**
      * Name (identifier) of the connection, unless specified otherwise 
@@ -55,7 +55,7 @@ public class ConnectionManager {
     /**
      * This gets a Connection from the ConnectionInfo named {@link DEFAULT_CONNECTION_NAME}.
      * <p>This call is just forwarded:
-     * <code>ConnectionManager.getReportConnection(DEFUALT_CONNECTION_NAME)</code>
+     * <code>ReportConnectionManager.getReportConnection(DEFUALT_CONNECTION_NAME)</code>
      * @return a java.sql.Connection
      */
     public static Connection getReportConnection() {
@@ -75,11 +75,6 @@ public class ConnectionManager {
      */
     public static Connection getReportConnection(String id) {
         
-        System.out.println("\nListing all connections:");
-        for (String key : allConnections.keySet()) {
-            System.out.println("Found Connection: " + key);
-        }
-        System.out.println("End of connection list.\n");
         ConnectionInfo info = allConnections.get(id);
         if (info == null) {
             throw new InvalidParameterException("No Connection named " + id + " was found!");
@@ -177,7 +172,7 @@ public class ConnectionManager {
     
     /**
      * Helper method for shutdown.  Closes all connections.  This is called by 
-     * {@link ReportManager.shutdown()}, so programmer should call that instead.
+     * {@link com.ticktockdata.jasper.ReportManager#shutdown(boolean)}, so programmer should call that instead.
      */
     protected static void unregisterAllConnections() {
         

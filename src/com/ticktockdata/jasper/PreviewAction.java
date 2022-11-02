@@ -99,7 +99,7 @@ public class PreviewAction extends PrintExecutor {
             return true;
             
         } catch (Exception ex) {
-            ReportManager.LOGGER.error("Error viewing the report", ex);
+            ReportManager.logger.error("Error viewing the report", ex);
             return false;
         }
         

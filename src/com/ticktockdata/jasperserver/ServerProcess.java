@@ -17,7 +17,7 @@
 package com.ticktockdata.jasperserver;
 
 import com.ticktockdata.jasper.ConnectionInfo;
-import com.ticktockdata.jasper.ConnectionManager;
+import com.ticktockdata.jasper.ReportConnectionManager;
 import com.ticktockdata.jasper.JasperPrintMain;
 import com.ticktockdata.jasper.JasperReportImpl;
 import com.ticktockdata.jasper.PrintAction;
@@ -121,7 +121,7 @@ public class ServerProcess extends Thread {
                     break;
                 case CONNECTIONS:
 
-                    for (String id : ConnectionManager.getAllConnections().keySet()) {
+                    for (String id : ReportConnectionManager.getAllConnections().keySet()) {
                         this.println(id);
                     }
                     this.close();    // this will exit this process
@@ -299,7 +299,7 @@ System.out.println("Processing Help");
                 id = ServerManager.DEFAULT_IDENTIFIER;
             }
             // make sure this id is registered
-            if (!ConnectionManager.getAllConnections().containsKey(id)) {
+            if (!ReportConnectionManager.getAllConnections().containsKey(id)) {
                 errs += ("\nThere is no database connection named " + id + " registered with this server.");
             }
 

@@ -6,7 +6,7 @@
 
 package com.ticktockdata.jasper.prompts;
 
-import com.ticktockdata.jasper.ConnectionManager;
+import com.ticktockdata.jasper.ReportConnectionManager;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import net.sf.jasperreports.engine.JRParameter;
@@ -55,11 +55,15 @@ public abstract class SQLQueryPrompt<T> extends PromptComponent<T> {
     @Override
     public void setParameter(JRParameter parameter) {
         super.setParameter(parameter);
-        String queryText = PromptComponentFactory.getProperty(parameter, "Query");
-        groovy.lang.GroovyShell shell = new groovy.lang.GroovyShell();
-        String defValExpression = parameter.getDefaultValueExpression().getText();
+        
+        String queryText = "";
+        String defValExpression = "";
         T defVal = null;
+        
         try {
+            queryText = PromptComponentFactory.getProperty(parameter, "Query");
+            groovy.lang.GroovyShell shell = new groovy.lang.GroovyShell();
+            defValExpression = (parameter.getDefaultValueExpression() == null ? "" : parameter.getDefaultValueExpression().getText());
             if (defValExpression != null && !defValExpression.trim().isEmpty()) {
                 defVal = (T) shell.evaluate(defValExpression);
             }
@@ -68,7 +72,7 @@ public abstract class SQLQueryPrompt<T> extends PromptComponent<T> {
             defVal = null;
         }
         parameter.getDefaultValueExpression();
-        QueryComboBoxModel<T> model = new QueryComboBoxModel<>(ConnectionManager.DEFAULT_CONNECTION_NAME, getComboBox(), queryText, defVal);
+        QueryComboBoxModel<T> model = new QueryComboBoxModel<>(ReportConnectionManager.DEFAULT_CONNECTION_NAME, getComboBox(), queryText, defVal);
         getComboBox().setModel(model);
         
     }

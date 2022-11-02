@@ -1,72 +1,83 @@
-
 package com.ticktockdata.jasper;
 
 /**
  *
- * @author JAM {javajoe@programmer.net}
+ * @author JAM
  * @since Apr 03, 2019
  * @see getStatus()
  */
 public class PrintStatusEvent extends java.util.EventObject {
-    
-    
-//    /**
-//     * Status of the printing process
-//     */
-//    public enum StatusCode {
-//        EXECUTE_START,
-//        EXECUTE_CANCELED,
-//        EXECUTE_ERROR,
-//        EXECUTE_COMPLETE
-//    }
-    
-    public static final int STATUS_UNDEFINED = 0;
-    public static final int EXECUTE_START = 2048;
-    public static final int EXECUTE_CANCELED = 4096;
-    public static final int EXECUTE_ERROR = 8192;
-    public static final int EXECUTE_COMPLETE = 16384;
-    
-    
-    private final int status;
-    private final long when;
-    
-    
+
     /**
-     * 
+     * Status of the printing process. A printing event always terminates with
+     * one of COMPLETE, CANCELED or ERROR, the remaining statuses are progress
+     * markers.
+     * <p>
+     * UNDEFINED is never fired as a status update, but {@link JasperReportImpl#getStatus()} returns
+     * UNDEFINED during these periods:
+     * <ol>
+     * <li>The report has never been executed
+     * <li>Between the time execute is called and the QUEUED event is fired
+     * </ol>
+     *
+     * @see getStatus()
+     */
+    public enum StatusCode {
+        UNDEFINED,
+        QUEUED,
+        STARTED,
+        COMPILED,
+        FILLED,
+        CANCELED,
+        ERROR,
+        COMPLETE
+    }
+
+    private final StatusCode status;
+    private final long when;
+
+    /**
+     *
      * @param source
      * @param status {@link getStatus()}
      */
-    public PrintStatusEvent(JasperReportImpl source, int status) {
+    public PrintStatusEvent(JasperReportImpl source, StatusCode status) {
         super(source);
         this.status = status;
         this.when = System.currentTimeMillis();
     }
-    
+
     @Override
     public JasperReportImpl getSource() {
-        return (JasperReportImpl)source;
+        return (JasperReportImpl) source;
     }
-    
+
     /**
-     * Get the status that occurred, which is one of the following:
+     * Get the {@link StatusCode} that occurred, which is one of the following:
      * <ul>
-     * <li>EXECUTE_START - The report is added to the ExecutorService
-     * <li>EXECUTE_CANCELED - User cancels report execution
-     * <li> EXECUTE_ERROR - Error occurs during execution
-     * <li>EXECUTE_COMPLETE - The report has completed execution successfully
+     * <li>QUEUED - The report is added to the ExecutorService
+     * <li>STARTED - The report.run() method was called (started execution)
+     * <li>COMPILED - The report file was fetched and compiled successfully
+     * <li>FILLED - The parameters were injected and the report filled
+     * successfully
+     * <li>CANCELED - User canceled report execution
+     * <li>ERROR - Error occurred during execution
+     * <li>COMPLETE - The report has completed execution successfully
      * </ul>
-     * @return 
+     *
+     * @return
      */
-    public int getStatus() {
+    public StatusCode getStatus() {
         return status;
     }
-    
+
     /**
      * The System.currentTimeMillis() when the event occurred.
-     * @return 
+     *
+     * @return
      */
     public long getWhen() {
         return when;
     }
-    
+
 }

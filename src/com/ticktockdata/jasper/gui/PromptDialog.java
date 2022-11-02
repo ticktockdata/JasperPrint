@@ -21,131 +21,119 @@ import com.ticktockdata.jasper.PrintExecutor;
 import com.ticktockdata.jasper.prompts.*;
 import java.awt.Frame;
 import java.util.List;
+import org.apache.log4j.Logger;
 
 /**
  *
- * @author JAM {javajoe@programmer.net}
+ * @author JAM
  */
 public class PromptDialog extends javax.swing.JDialog {
-    
-    private JasperReportImpl jasperReportImpl = null;
-    
+
+    private static final Logger logger = Logger.getLogger(PromptDialog.class);
+    private final JasperReportImpl jasperReportImpl;
+
     /**
      * Creates new form PromptDialog
+     *
      * @param parent
      * @param modal
      */
-    public PromptDialog(java.awt.Frame parent, boolean modal) {
+    public PromptDialog(java.awt.Frame parent, boolean modal, JasperReportImpl jasperReportImpl) {
         super(parent, modal);
+        this.jasperReportImpl = jasperReportImpl;
         initComponents();
-    }
-    
-    
-     /**
-     * @return the jasperReportImpl
-     */
-    public JasperReportImpl getJasperReportImpl() {
-        return jasperReportImpl;
     }
 
     /**
-     * @param jasperReportImpl the jasperReportImpl to set
-     */
-    public void setJasperReportImpl(JasperReportImpl jasperReportImpl) {
-        this.jasperReportImpl = jasperReportImpl;
-    }
-    
-    
-    /**
-     * This method called internally to fill the jasperReportImpl's parameters via
- user selections made on dialog.
+     * This method called internally to fill the jasperReportImpl's parameters
+     * via user selections made on dialog.
      */
     private void fillParameters() {
-        
-        System.out.println("Filling the parameters!");
+
+        logger.trace("Filling the parameters!");
         for (java.awt.Component c : pnlParams.getComponents()) {
             if (c instanceof DateRangePrompt) {
-                ((DateRangePrompt)c).fillParameters(jasperReportImpl);
+                ((DateRangePrompt) c).fillParameters(jasperReportImpl);
             } else if (c instanceof PromptComponent) {
-                jasperReportImpl.setParameter(((PromptComponent)c).getPromptName(), ((PromptComponent)c).getPromptValue());
+                jasperReportImpl.setParameter(((PromptComponent) c).getPromptName(), ((PromptComponent) c).getPromptValue());
             }
         }
     }
-    
-    
+
     /**
      * Loads the prompt components onto the dialog
-     * @return 
+     *
+     * @return
      */
     private boolean loadParameters() {
-        
+
         // remove the existing components
         for (int i = pnlParams.getComponentCount() - 1; i >= 0; i--) {
             pnlParams.remove(i);
         }
-        
+
         // get list of components
         List<PromptComponent> prompts = PromptComponentFactory.getPromptsForReport(jasperReportImpl);
-        
+
         for (PromptComponent pc : prompts) {
             pnlParams.add(pc);
             pc.refreshData();
         }
-        
+
         this.pack();
-        
+
         // return true only if there are prompts to choose from
         return prompts.size() > 0;
     }
-    
+
     public static void showPromptDialog(java.awt.Component parent, JasperReportImpl report) {
-        
+
         try {
-        java.awt.Frame frame = null;
+            System.out.println("showPromptDialog, parent = " + parent);
+            java.awt.Frame frame = null;
 //        System.out.println("show prompt dialog...");
-        // Access the JFrame via the parent component of the jasperReportImpl (JButton?)
-        if (parent != null) {
-            while (!(parent instanceof java.awt.Frame)) {
-                if (parent.getParent() == null) {
-                    break;
-                } else {
-                    parent = parent.getParent();
-                }
-                if (parent instanceof java.awt.Frame) {
-                    frame = (Frame) parent;
-                    break;
+            // Access the JFrame via the parent component of the jasperReportImpl (JButton?)
+            if (parent != null) {
+                while (!(parent instanceof java.awt.Frame)) {
+                    if (parent.getParent() == null) {
+                        break;
+                    } else {
+                        parent = parent.getParent();
+                    }
+                    if (parent instanceof java.awt.Frame) {
+                        frame = (Frame) parent;
+                        break;
+                    }
                 }
             }
-        }
-        
-        PromptDialog dlg = new PromptDialog(frame, true);
-        dlg.setJasperReportImpl(report);
-        if (!dlg.loadParameters()) {
-            // if failed to fill parameters (maybe there were none) then exit
-            // we need to dispose this dialog, or else it will 'hang' the application on shutdown
-            System.out.println("there are no parameters!");
-            dlg.dispose();
-            return;
-        } else {
-            System.out.println("did load parameters");
-        }
-        
+            System.out.println("got the frame...");
+            PromptDialog dlg = new PromptDialog(frame, true, report);
+            System.out.println("created new PromptDialog: " + dlg);
+            if (!dlg.loadParameters()) {
+                // if failed to fill parameters (maybe there were none) then exit
+                // we need to dispose this dialog, or else it will 'hang' the application on shutdown
+                logger.debug("there are no parameters!");
+                dlg.dispose();
+                return;
+            } else {
+                logger.debug("did load parameters");
+            }
+
 //        System.out.println("setting location relative to " + parent);
-        dlg.setLocationRelativeTo(parent);
-        
-        // remove execute button if no settings available
-        if (report.getPrintButton() == null) {
-            dlg.cmdExecute.setVisible(false);
-        }
-        
+            dlg.setLocationRelativeTo(parent);
+
+            // remove execute button if no settings available
+            if (report.getPrintButton() == null) {
+                dlg.cmdExecute.setVisible(false);
+            }
+
 //        System.out.println("showing dialog!");
-        dlg.setVisible(true);
-        
+            dlg.setVisible(true);
+
         } catch (Exception ex) {
-            System.out.println("Exception: " + ex.getLocalizedMessage());
-            ex.printStackTrace();
+            logger.error("Exception: " + ex.getLocalizedMessage(), ex);
         }
-        
+
     }
 
     /**
@@ -246,37 +234,37 @@ public class PromptDialog extends javax.swing.JDialog {
     }// </editor-fold>//GEN-END:initComponents
 
     private void cmdCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdCancelActionPerformed
-        
+
         jasperReportImpl.setCanceled(true);
         this.setVisible(false);
         this.dispose();
-        
+
     }//GEN-LAST:event_cmdCancelActionPerformed
 
     private void cmdPrintActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdPrintActionPerformed
-        
+
         jasperReportImpl.setPrintAction(PrintExecutor.Action.PRINT);
         fillParameters();
         this.setVisible(false);
         this.dispose();
-        
+
     }//GEN-LAST:event_cmdPrintActionPerformed
 
     private void cmdPreviewActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdPreviewActionPerformed
-        
+
         jasperReportImpl.setPrintAction(PrintExecutor.Action.PREVIEW);
         fillParameters();
         this.setVisible(false);
         this.dispose();
-        
+
     }//GEN-LAST:event_cmdPreviewActionPerformed
 
     private void cmdExecuteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmdExecuteActionPerformed
-        
+
         fillParameters();
         this.setVisible(false);
         this.dispose();
-        
+
     }//GEN-LAST:event_cmdExecuteActionPerformed
 
     /**
@@ -309,7 +297,7 @@ public class PromptDialog extends javax.swing.JDialog {
         /* Create and display the dialog */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                PromptDialog dialog = new PromptDialog(new javax.swing.JFrame(), true);
+                PromptDialog dialog = new PromptDialog(new javax.swing.JFrame(), true, new JasperReportImpl());
                 dialog.addWindowListener(new java.awt.event.WindowAdapter() {
                     @Override
                     public void windowClosing(java.awt.event.WindowEvent e) {
@@ -330,6 +318,5 @@ public class PromptDialog extends javax.swing.JDialog {
     private javax.swing.JPanel pnlButtons;
     private javax.swing.JPanel pnlParams;
     // End of variables declaration//GEN-END:variables
-
 
 }

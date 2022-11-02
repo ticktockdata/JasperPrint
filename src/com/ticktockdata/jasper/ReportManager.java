@@ -37,7 +37,6 @@ import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import net.sf.jasperreports.engine.JRException;
-import net.sf.jasperreports.engine.JRParameter;
 import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperReport;
 import org.apache.log4j.Logger;
@@ -61,7 +60,7 @@ import org.apache.log4j.Logger;
  * JasperReportImpl by calling ReportManager.getReport(String full_path_to_file)
  * <p>
  * Before a report can be executed a Database Connection must be established,
- * use {@link ConnectionManager} to add connection(s).
+ * use {@link ReportConnectionManager} to add connection(s).
  *
  * @author JAM {javajoe@programmer.net}
  * @since v0.0, Aug 24, 2018
@@ -71,7 +70,7 @@ public class ReportManager {
     /**
      * log4j logger
      */
-    public static final Logger LOGGER = Logger.getLogger(ReportManager.class);
+    public static final Logger logger = Logger.getLogger(ReportManager.class);
 
     /**
      * SingleThreadExecutorService that runs the reports
@@ -109,10 +108,10 @@ public class ReportManager {
      */
     protected static JasperReport getJasperReport(String reportPath) {
 
-        LOGGER.trace("getReport called for file: " + reportPath);
+        logger.trace("getReport called for file: " + reportPath);
 
         if (reportPath == null || reportPath.trim().isEmpty()) {
-            LOGGER.warn("A Null or empty reportPath was given to getJasperReport: " + reportPath);
+            logger.warn("A Null or empty reportPath was given to getJasperReport: " + reportPath);
             throw new InvalidParameterException("The specified reportFile is null or empty!");
         }
         
@@ -125,12 +124,12 @@ public class ReportManager {
             // check that it hasn't been modified!
             if (file.lastModified() != REPORT_MODIFIED.get(reportPath)) {
                 // remove from cache and continue to reload
-                LOGGER.info("Report file has been modified, reloading!");
+                logger.info("Report file has been modified, reloading!");
                 // remove the parameters for this report
                 PromptComponentFactory.clearPromptComponentCache(REPORT_CACHE.get(reportPath).getParameters());
                 removeFromCache(reportPath);
             } else {
-                LOGGER.debug("Returning cached report: " + reportPath);
+                logger.debug("Returning cached report: " + reportPath);
                 return REPORT_CACHE.get(reportPath);
             }
         }
@@ -140,10 +139,10 @@ public class ReportManager {
             JasperReport report = JasperCompileManager.compileReport(file.getAbsolutePath());
             REPORT_CACHE.put(reportPath, report);
             REPORT_MODIFIED.put(reportPath, file.lastModified());
-            LOGGER.debug("Compiled report and added to cache!  " + report.getName());
+            logger.debug("Compiled report and added to cache!  " + report.getName());
             return report;
         } catch (JRException ex) {
-            LOGGER.error("Error while compiling report: " + reportPath, ex);
+            logger.error("Error while compiling report: " + reportPath, ex);
             return null;
         }
 
@@ -169,43 +168,44 @@ public class ReportManager {
      * Gets the Report File, uses ClassLoader to find.
      * @param reportPath
      * @return 
+     * @throws InvalidParameterException if the specified reportPath is not valid
      */
     public static File getReportFile(String reportPath) {
         
         
-        java.io.File file = null;
+        java.io.File file;
         
         try {
             // get file as resource
             java.net.URL url = ClassLoader.getSystemResource(reportPath);
-            LOGGER.trace("getReportFile() called, URL = " + url); // null
+            logger.trace("getReportFile() called, URL = " + url); // null
             
             if (url == null) {
-                LOGGER.debug("Creating file from report path: " + reportPath);
+                logger.debug("Creating file from report path: " + reportPath);
                 file = new java.io.File(reportPath);    //url.toURI());    //reportPath);
                 if (!file.exists()) {
-                    LOGGER.info("Attempting to find report in reports folder");
+                    logger.info("Attempting to find report in reports folder");
                     file = new java.io.File("reports" + File.separator + reportPath);
                 }
             } else {
-                LOGGER.debug("Creating file from url: " + url.toURI());
+                logger.debug("Creating file from url: " + url.toURI());
                 file = new java.io.File(url.toURI());
             }
         } catch (Exception ex) {
-            LOGGER.error("The report file does not exist! " + reportPath);
-            removeFromCache(reportPath);
-            throw new InvalidParameterException("The file specified: <"
-                    + reportPath + "> does not exist!");
+            file = null;
+//            logger.error("The report file does not exist! " + reportPath);
+//            removeFromCache(reportPath);
         }
         
 
         // if file doesn't exist then throw exception
-        if (!file.exists()) {
-            LOGGER.warn("The specified reportFile does not exist: " + reportPath);
+        if (file == null || !file.exists()) {
+            logger.warn("The specified reportFile does not exist: " + reportPath);
             // remove from cache if it is in there
             removeFromCache(reportPath);
-            throw new InvalidParameterException("The file specified: <"
-                    + reportPath + "> does not exist!");
+            return null;
+//            throw new InvalidParameterException("The file specified: <"
+//                    + reportPath + "> does not exist!");
         }
         
         // return the report file
@@ -292,21 +292,22 @@ public class ReportManager {
         try {
             // load the default parameters!
             Map<String, Object> defaultParams = DEFAULT_PARAMS.get(report.getConnectionID());
-            LOGGER.debug("defaultParams = " + defaultParams);
+            logger.debug("defaultParams = " + defaultParams);
             // if failed for this id and id is not default, then try default
-            if (defaultParams == null && !ConnectionManager.DEFAULT_CONNECTION_NAME.equals(report.getConnectionID())) {
-                defaultParams = DEFAULT_PARAMS.get(ConnectionManager.DEFAULT_CONNECTION_NAME);
+            if (defaultParams == null && !ReportConnectionManager.DEFAULT_CONNECTION_NAME.equals(report.getConnectionID())) {
+                defaultParams = DEFAULT_PARAMS.get(ReportConnectionManager.DEFAULT_CONNECTION_NAME);
             }
             if (defaultParams != null) {
                 report.setParams(defaultParams);
             }
             
-            LOGGER.debug("The Report's print action is: " + report.getPrintAction());
+            logger.debug("The Report's print action is: " + report.getPrintAction());
             EXECUTOR_SERVICE.execute(report);
+            report.firePrintStatusChanged(PrintStatusEvent.StatusCode.QUEUED);
 //            EXECUTOR_SERVICE.awaitTermination(10, TimeUnit.SECONDS);
-            LOGGER.debug("Added report " + report.getReportName() + " to SingleThreadExecutorService");
+            logger.debug("Added report " + report.getReportName() + " to SingleThreadExecutorService");
         } catch (Exception ex) {
-            LOGGER.error("Failed to execute the report: " + report.getReportName(), ex);
+            logger.error("Failed to execute the report: " + report.getReportName(), ex);
             removeFromCache(report.getReportPath());
         }
 
@@ -325,12 +326,10 @@ public class ReportManager {
     public static int clearReportCache() {
         int count = REPORT_CACHE.size();
         if (count <= 0) {
-            LOGGER.info("clearReportCache called, there were no cached reports to clear");
+            logger.info("clearReportCache called, there were no cached reports to clear");
         } else {
-            for (String r : REPORT_CACHE.keySet()) {
-                removeFromCache(r);
-            }
-            LOGGER.info("Cleared cache, there were " + count + " reports cached.");
+            REPORT_CACHE.clear();
+            logger.info("Cleared cache, there were " + count + " reports cached.");
         }
         // have the PromptComponentFactory clear it's cached prompts
         PromptComponentFactory.clearPromptComponentCache();
@@ -347,7 +346,7 @@ public class ReportManager {
 
         REPORT_CACHE.remove(reportPath);
         REPORT_MODIFIED.remove(reportPath);
-        LOGGER.info("Removed from report cache: " + reportPath);
+        logger.info("Removed from report cache: " + reportPath);
 
     }
 
@@ -359,7 +358,7 @@ public class ReportManager {
      * @param params
      */
     public static void setDefaultReportParameters(Map<String, Object> params) {
-        setDefaultReportParameters(ConnectionManager.DEFAULT_CONNECTION_NAME, params);
+        setDefaultReportParameters(ReportConnectionManager.DEFAULT_CONNECTION_NAME, params);
     }
 
     /**
@@ -382,16 +381,17 @@ public class ReportManager {
     public static void setDefaultReportParameters(String identifier, Map<String, Object> params) {
 
         if (DEFAULT_PARAMS.containsKey(identifier)) {
-            LOGGER.warn("Replacing the existing default parameters for " + identifier);
+            logger.info("Replacing the existing parameters for connection \"" + identifier + "\"");
         } else {
-            LOGGER.info("adding default parameters for " + identifier);
+            logger.debug("Adding default parameters for connection \"" + identifier + "\"");
         }
 
         DEFAULT_PARAMS.put(identifier, params);
         
         for (String s : params.keySet()) {
-            LOGGER.info("Saving Default Parameter: " + s + "=" + params.get(s));
+            logger.trace("Set a Default Parameter for \"" + identifier + "\": " + s + "=" + params.get(s));
         }
+        
     }
     
     
@@ -498,7 +498,7 @@ public class ReportManager {
      */
     public static void shutdown(boolean force) {
 
-        LOGGER.info("ReportManager.shutdown(force=" + force + ") was called");
+        logger.info("ReportManager.shutdown(force=" + force + ") was called");
         try {
             if (force) {
                 EXECUTOR_SERVICE.shutdownNow();
@@ -507,10 +507,10 @@ public class ReportManager {
                 EXECUTOR_SERVICE.awaitTermination(10, TimeUnit.MINUTES);
             }
 
-            ConnectionManager.unregisterAllConnections();
+            ReportConnectionManager.unregisterAllConnections();
 
         } catch (Exception ex) {
-            LOGGER.error("Error in ReportManager.shutdown()", ex);
+            logger.error("Error in ReportManager.shutdown()", ex);
         }
 
     }

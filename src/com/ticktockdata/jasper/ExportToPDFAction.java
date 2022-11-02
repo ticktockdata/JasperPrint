@@ -1,11 +1,6 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package com.ticktockdata.jasper;
 
+import com.ticktockdata.jasper.PrintStatusEvent.StatusCode;
 import java.io.File;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -18,14 +13,14 @@ import net.sf.jasperreports.export.SimplePdfExporterConfiguration;
 
 /**
  *
- * @author JAM {javajoe@programmer.net}
+ * @author JAM
  * @since Apr 03, 2019
  */
 public class ExportToPDFAction extends PrintExecutor {
-    
+
     private boolean canceled = false;
-    private File lastFile;
-    
+    private static File lastFile;
+
     public ExportToPDFAction(JasperReportImpl report) {
         super(report);
     }
@@ -42,8 +37,10 @@ public class ExportToPDFAction extends PrintExecutor {
 
     @Override
     public boolean execute(JasperPrint print) {
-        
+
         try {
+            
+            canceled = false;
             
             String filePath = getReport().getExportFilePath();
             if (filePath == null) {
@@ -51,13 +48,15 @@ public class ExportToPDFAction extends PrintExecutor {
                 JFileChooser picker = new JFileChooser();
                 picker.setDialogType(JFileChooser.SAVE_DIALOG);
                 picker.setDialogTitle("Save PDF to");
-                
+
                 picker.setAcceptAllFileFilterUsed(true);
-                
+
                 FileFilter filter = new FileFilter() {
                     @Override
                     public boolean accept(File f) {
-                        if (f.isDirectory()) return true;
+                        if (f.isDirectory()) {
+                            return true;
+                        }
                         try {
                             return f.toURI().toURL().openConnection().getContentType().toLowerCase().contains("pdf");
                         } catch (Exception x) {
@@ -70,44 +69,51 @@ public class ExportToPDFAction extends PrintExecutor {
                         return "PDF files (*.pdf)";
                     }
                 };
-                
+
                 picker.addChoosableFileFilter(filter);
                 picker.setFileFilter(filter);
-                if(lastFile != null) {
+                if (lastFile != null) {
                     picker.setSelectedFile(lastFile);
                 }
-                System.out.println("Parent = " + getReport().getParent());
-                if (canceled) return false;
-                int rslt = picker.showSaveDialog(getReport().getParent());
-                if (canceled) return false;
                 
+                if (canceled) {
+                    return false;
+                }
+                int rslt = picker.showSaveDialog(getReport().getParent());
+                if (canceled) {
+                    return false;
+                }
+
                 if (rslt != JFileChooser.APPROVE_OPTION) {
                     logger.info("User canceled file selection");
                     return false;
                 }
-                
-                
+
                 File selectedFile = picker.getSelectedFile();
-                
+
                 if (selectedFile == null) {
                     logger.info("Selected File is null (should not happen)");
                     return false;
                 } else {
                     lastFile = selectedFile;
                 }
-                
+
                 filePath = selectedFile.getAbsolutePath();
                 if (!filePath.toLowerCase().endsWith(".pdf")) {
                     filePath += ".pdf";
                 }
-                
+
             }   // end of file selection routine
-            
+
             File file = new File(filePath);
-            if (canceled) return false;
+            if (canceled) {
+                return false;
+            }
             // confirm that it does not exist
             if (!getReport().isOverwriteExportFile() && file.exists()) {
-                if (JOptionPane.showConfirmDialog(getReport().getParent(), "File already exists, do you want to overwrite?", "Confirm:", JOptionPane.YES_NO_OPTION) == JOptionPane.NO_OPTION) {
+                String msg = "File already exists, do you want to overwrite?";
+                if (JOptionPane.showConfirmDialog(getReport().getParent(), msg, "Confirm:", JOptionPane.YES_NO_OPTION) == JOptionPane.NO_OPTION) {
+                    cancelExecute();
                     return false;
                 }
             }
@@ -117,22 +123,28 @@ public class ExportToPDFAction extends PrintExecutor {
 
             SimplePdfExporterConfiguration config = new SimplePdfExporterConfiguration();
             config.setCompressed(Boolean.TRUE);
-            
+
             exporter.setConfiguration(config);
-            
-            if (canceled) return false;
+
+            if (canceled) {
+                return false;
+            }
             exporter.exportReport();
-            
-            
+
             // clear the report path after exporting
             getReport().setExportFilePath(null);
-            
+
         } catch (Exception ex) {
             logger.error("Error while exporting to PDF: " + ex, ex);
+            getReport().firePrintStatusChanged(StatusCode.ERROR);
             return false;
+        } finally {
+            if (canceled) {
+                getReport().firePrintStatusChanged(StatusCode.CANCELED);
+            }
         }
-        
-        return true;
+
+        return !canceled;
     }
 
     @Override
