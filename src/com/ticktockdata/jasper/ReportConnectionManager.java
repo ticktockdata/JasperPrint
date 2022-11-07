@@ -160,7 +160,7 @@ public class ReportConnectionManager {
     public static void unregisterConnection(String id) {
         
         if (!allConnections.containsKey(id)) {
-            LOGGER.warn("The requested connection " + id + " could not be found, did not unregister!");
+            LOGGER.debug("No connection named " + id + " found, did not unregister");
             return;
         }
 
