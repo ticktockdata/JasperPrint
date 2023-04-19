@@ -160,18 +160,23 @@ public class ReportManager {
      * @return
      */
     public static JasperReportImpl getReport(String reportPath) {
-        return new JasperReportImpl(reportPath);
+        if (getReportFile(reportPath) != null) {
+            return new JasperReportImpl(reportPath);
+        }
+        return null;
     }
     
     
     /**
      * Gets the Report File, uses ClassLoader to find.
-     * @param reportPath
-     * @return 
-     * @throws InvalidParameterException if the specified reportPath is not valid
+     * @param reportPath needs to be a valid .jrxml file
+     * @return a File object, or null if report does not exist
      */
     public static File getReportFile(String reportPath) {
         
+        if (reportPath == null || !reportPath.toLowerCase().trim().endsWith(".jrxml")) {
+            return null;
+        }
         
         java.io.File file;
         
@@ -212,6 +217,22 @@ public class ReportManager {
         return file;
         
     }
+    
+    
+    public static List<File> listReportsInDir(String reportDir) {
+
+        List<File> reports = new ArrayList<>();
+        File dir = new File(reportDir);
+        if (dir.exists() && dir.isDirectory()) {
+            for (File f : dir.listFiles()) {
+                if (f.getName().toLowerCase().endsWith(".jrxml")) {
+                    reports.add(f);
+                }
+            }
+        }
+        return reports;
+    }
+
     
     /**
      * Method that returns list of available printer names, sorted.
@@ -391,6 +412,27 @@ public class ReportManager {
         for (String s : params.keySet()) {
             logger.trace("Set a Default Parameter for \"" + identifier + "\": " + s + "=" + params.get(s));
         }
+        
+    }
+    
+    
+    /**
+     * Adds a parameter for the connection named "default"
+     * 
+     * @param key
+     * @param value 
+     */
+    public static void addDefaultReportParameter(String key, Object value) {
+        addDefaultReportParameter(ReportConnectionManager.DEFAULT_CONNECTION_NAME, key, value);
+    }
+    
+    
+    
+    public static void addDefaultReportParameter(String identifier, String key, Object value) {
+        
+        Map<String, Object> map = DEFAULT_PARAMS.getOrDefault(identifier, new HashMap<>());
+        map.put(key, value);
+        DEFAULT_PARAMS.put(identifier, map);
         
     }
     

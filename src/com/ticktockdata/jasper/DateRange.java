@@ -351,6 +351,18 @@ public enum DateRange {
         public Date getEndDate() {
             return getYesterday();
         }
+    },
+    CUSTOM("** Custom **") {
+        @Override
+        public Date getStartDate() {
+            return null;
+        }
+
+        @Override
+        public Date getEndDate() {
+            return null;
+        }
+        
     };
 
     private final String prettyName;
@@ -369,7 +381,7 @@ public enum DateRange {
     }
 
     /**
-     * This is just a tester method that prints all values to Standard.out.
+     * This is just a tester method that prints all values to System.out.
      */
     public static void printValues() {
         for (DateRange dr : values()) {

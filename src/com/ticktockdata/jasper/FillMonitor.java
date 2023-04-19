@@ -52,6 +52,7 @@ public class FillMonitor extends javax.swing.JDialog implements AsynchronousFill
     private Timer timer;
     private boolean canceled = true;
     private boolean error = true;
+    private Throwable throwable = null;
     private boolean stopped = false;
 
 
@@ -76,6 +77,7 @@ public class FillMonitor extends javax.swing.JDialog implements AsynchronousFill
                     ReportConnectionManager.getReportConnection(report.getConnectionID()));
         } catch (Exception ex) {
             logger.error("Error creating AsynchronousFillHandle for report!", ex);
+            throwable = ex;
             error = true;
             stopMonitor();
             return;
@@ -160,6 +162,16 @@ public class FillMonitor extends javax.swing.JDialog implements AsynchronousFill
     public boolean isCanceled() {
         return canceled;
     }
+    
+    /**
+     * If a {@link Throwable} error occurs it can be accessed here, otherwise
+     * this returns null;
+     *
+     * @return
+     */
+    public Throwable getThrowable() {
+        return throwable;
+    }
 
     /**
      * After the report is filled this can be used to check how many pages it
@@ -237,6 +249,7 @@ public class FillMonitor extends javax.swing.JDialog implements AsynchronousFill
             logger.info("User Canceled Report execution!");
         } catch (Exception ex) {
             logger.error("Error canceling the report execution!", ex);
+            throwable = ex;
         }
 
     }//GEN-LAST:event_cmdCancelActionPerformed
@@ -255,6 +268,8 @@ public class FillMonitor extends javax.swing.JDialog implements AsynchronousFill
 
         if (this.report.getPrintExecutor().execute(jasperPrint)) {
             report.firePrintStatusChanged(StatusCode.COMPLETE);
+        } else {
+            logger.error("Failed to execute the report!");
         }
 
         stopMonitor();
@@ -270,6 +285,8 @@ public class FillMonitor extends javax.swing.JDialog implements AsynchronousFill
     @Override
     public void reportFillError(Throwable t) {
         error = true;
+        logger.error("Error occurred during fillReport: " + t.getLocalizedMessage(), t);
+        throwable = t;
         report.firePrintStatusChanged(StatusCode.ERROR);
         stopMonitor();
     }

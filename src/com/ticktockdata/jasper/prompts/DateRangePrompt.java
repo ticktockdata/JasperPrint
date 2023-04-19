@@ -203,9 +203,9 @@ public class DateRangePrompt extends PromptComponent<List<Date>> implements JRPa
         Date newStartDate = startDate = startDate == null ? DateRange.TODAY.getStartDate() : startDate;
         if (!Objects.equals(dateStart.getDate(), newStartDate)) {
             this.dateStart.setDate(newStartDate);
-            if (triggerCustom) {
-                cboRange.setSelectedItem("** CUSTOM **");
-            }
+        }
+        if (triggerCustom && cboRange.getSelectedItem() != DateRange.CUSTOM) {
+            cboRange.setSelectedItem(DateRange.CUSTOM);
         }
     }
 
@@ -224,8 +224,11 @@ public class DateRangePrompt extends PromptComponent<List<Date>> implements JRPa
         if (!Objects.equals(dateEnd.getDate(), newEndDate)) {
             this.dateEnd.setDate(newEndDate);
             if (triggerCustom) {
-                cboRange.setSelectedItem("** CUSTOM **");
+                cboRange.setSelectedItem(DateRange.CUSTOM);
             }
+        }
+        if (triggerCustom && cboRange.getSelectedItem() != DateRange.CUSTOM) {
+            cboRange.setSelectedItem(DateRange.CUSTOM);
         }
     }
 
@@ -238,8 +241,10 @@ public class DateRangePrompt extends PromptComponent<List<Date>> implements JRPa
         triggerCustom = false;  // disable set(Start/End)Date calling custom
         suppressTrigger = true;  // prevent looping when cboRange.setSelectedItem is called!
         
-        setStartDate(dateRange.getStartDate());
-        setEndDate(dateRange.getEndDate());
+        if (dateRange != DateRange.CUSTOM) {
+            setStartDate(dateRange.getStartDate());
+            setEndDate(dateRange.getEndDate());
+        }
         
         if (!dateRange.equals(cboRange.getSelectedItem())) {
             cboRange.setSelectedItem(dateRange);

@@ -32,6 +32,7 @@ import javax.swing.AbstractButton;
 import javax.swing.SwingUtilities;
 import org.apache.log4j.Level;
 import static com.ticktockdata.jasper.ReportManager.logger;
+import javax.swing.JOptionPane;
 
 /**
  * This is the primary class (wrapper) for running a JasperReport. You (the
@@ -629,8 +630,6 @@ public class JasperReportImpl implements Runnable {
 
         try {
 
-            logger.setLevel(Level.TRACE);
-
             // fire property change that lets interested parties know execution has started
             firePrintStatusChanged(StatusCode.STARTED);
 
@@ -699,6 +698,18 @@ public class JasperReportImpl implements Runnable {
                         logger.error("Error while waiting on fill monitor", tx);
                     }
                 }
+                // ToDo: Showing message should NOT be here - need to move outward
+                if (monitor.getThrowable() != null) {
+                    SwingUtilities.invokeLater(() -> {
+                        Throwable cause = monitor.getThrowable();
+                        String msg = "";
+                        while (cause != null) {
+                            msg += "\n" + cause.toString();
+                            cause = cause.getCause();
+                        }
+                        JOptionPane.showMessageDialog(null, "An error occurred filling report:" + msg, "Report Failed", JOptionPane.ERROR_MESSAGE);
+                    });
+                }
             });
 
             // start the waiter thread
@@ -706,7 +717,7 @@ public class JasperReportImpl implements Runnable {
             // current thread waits until waiter dies.
             waiter.join();
 
-            logger.trace("Waiter has joined!");
+            logger.trace("Waiter has joined!");            
             error = false;  // why?
 
         } catch (Exception err) {
