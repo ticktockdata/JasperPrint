@@ -322,6 +322,13 @@ public class ReportManager {
                 report.setParams(defaultParams);
             }
             
+            try {
+                // set the dir containing the report
+                report.setParameter("SUBREPORT_DIR", new java.io.File(report.getReportPath()).getParentFile().getAbsolutePath() + File.separator);
+            } catch (Exception ex) {
+                logger.error("Failed to set SUBREPORT_DIR parameter!");
+            }
+            
             logger.debug("The Report's print action is: " + report.getPrintAction());
             EXECUTOR_SERVICE.execute(report);
             report.firePrintStatusChanged(PrintStatusEvent.StatusCode.QUEUED);
