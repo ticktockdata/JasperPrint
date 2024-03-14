@@ -189,7 +189,7 @@ public class PrintServer extends Thread {
             server = new ServerSocket(port);
             
             // display the tray icon
-            if (no_tray) {
+            if (!no_tray) {
                 addTrayIcon();
             }
             

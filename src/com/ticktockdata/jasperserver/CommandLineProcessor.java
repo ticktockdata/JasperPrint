@@ -633,10 +633,10 @@ public class CommandLineProcessor {
         
         for (String s : args) {
             if (s.toLowerCase().contains("--no-tray")) {
-                return false;
+                return true;
             }
         }
-        return true;
+        return false;
         
     }
     
