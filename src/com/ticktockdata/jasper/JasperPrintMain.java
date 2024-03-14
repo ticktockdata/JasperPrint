@@ -333,6 +333,7 @@ public class JasperPrintMain {
                 + "--fonts (path of directory containing JasperReport font extensions (must be .jar files))\n"
                 + "--silent OR -si (suppresses visible Message Boxes)\n"
                 + "--verbose OR -v (increases terminal output)\n"
+                + "--no-tray suppresses the tray icon. (Only effective with " + PrintServer.Command.START + " command)\n"
                 + getHelpFooter();
     }
     

@@ -68,7 +68,7 @@ public class CommandLineProcessor {
         try {
             cmd = PrintServer.Command.valueOf(a1);
             if (cmd == null) {
-                throw new InvalidParameterException("Cannot convert '" + a1 + "' to a vaid PrintAction.Command");
+                throw new InvalidParameterException("Cannot convert '" + a1 + "' to a valid PrintAction.Command");
             }
         } catch (Exception ex) {
             CommandLineProcessor.showError("ERROR: " + ex.toString(), ex, false);
@@ -127,6 +127,7 @@ public class CommandLineProcessor {
     private void processStart(String[] args) {
         
         boolean silent = getSilentFromArgs(args);
+        boolean no_tray = getNoTrayFromArgs(args);
         
         if (args.length < 1) {
             showError("Insufficient arguments to start a server!", null, silent);
@@ -148,7 +149,7 @@ public class CommandLineProcessor {
 ////            return;  // do NOT return, start an empty server (w/o connection)
 //        }   // if not creatable then exit
         
-        String status = ServerManager.startPrintServer(port, connInfo, silent);
+        String status = ServerManager.startPrintServer(port, connInfo, silent, no_tray);
         
         // added 2021-07-07, JAM
         String fontDir = getArgumentValue(args, "-font");
@@ -620,6 +621,22 @@ public class CommandLineProcessor {
             }
         }
         return false;
+        
+    }
+    
+    /**
+     * No-tray has no arguments, false if missing
+     * @param args
+     * @return
+     */
+    public static boolean getNoTrayFromArgs(String[] args) {
+        
+        for (String s : args) {
+            if (s.toLowerCase().contains("--no-tray")) {
+                return false;
+            }
+        }
+        return true;
         
     }
     

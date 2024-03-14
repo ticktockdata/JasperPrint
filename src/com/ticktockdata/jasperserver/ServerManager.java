@@ -92,9 +92,10 @@ public class ServerManager {
      * connection.
      * @param silent if false then silently adds / replaces connection to 
      * existing server w/o asking user.
+     * @param no_tray if true then don't add a tray icon
      * @return status message text, syntax: MessageType | message text
      */
-    public static String startPrintServer(int port, ConnectionInfo connInfo, boolean silent) {
+    public static String startPrintServer(int port, ConnectionInfo connInfo, boolean silent, boolean no_tray) {
                 
         if (connInfo == null || !connInfo.isValidInfo(false)) {
             // if not valid connection info then we just START a server, don't 
@@ -105,6 +106,7 @@ public class ServerManager {
             try {
                 PrintServer server = new PrintServer(port, connInfo, silent);
                 server.setSilent(silent);
+                server.setNoTray(no_tray);
                 server.start();
                 return MessageType.INFO + "Started Successfully with NO Connection registered: " + server.toString();
             } catch (Exception ex) {

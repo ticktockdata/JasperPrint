@@ -59,6 +59,8 @@ import javax.swing.JOptionPane;
  * @since Oct 04, 2018
  */
 public class PrintServer extends Thread {
+
+    private boolean no_tray;
     
     
     public enum Command {
@@ -187,7 +189,9 @@ public class PrintServer extends Thread {
             server = new ServerSocket(port);
             
             // display the tray icon
-            addTrayIcon();
+            if (no_tray) {
+                addTrayIcon();
+            }
             
             
             while (true) {
@@ -389,6 +393,13 @@ public class PrintServer extends Thread {
      */
     public void setSilent(boolean silent) {
         this.silent = silent;
+    }
+    
+    /**
+     * @param no_tray
+     */
+    public void setNoTray(boolean no_tray) {
+        this.no_tray = no_tray;
     }
     
     public String getHostName() {
