@@ -1,3 +1,5 @@
+NOTICE:  This project has been moved to SourceHut  https://git.sr.ht/~ticktockdata/JasperPrint
+
 JasperPrint is a java report printing utility that utilizes TIBCO(R) Jasper Reports library.
 Developed by Joseph A Miller / Tick Tock Data (javajoe@programmer.net) over an extended period of time (ditched the first attempt and started over in 2019).
 Copyright:  Jasper Reports library and this application are open source, under the accomplying GNU LESSER GENERAL PUBLIC LICENSE Version 3.
